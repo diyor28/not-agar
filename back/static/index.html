@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <script src="https://unpkg.com/vue-router@2.0.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/p5@1.1.9/lib/p5.js"></script>
+    <script src="main.js"></script>
+</head>
+<body>
+<div id="app">
+    <router-view></router-view>
+</div>
+</body>
+<script>
+    const routes = [
+        {
+            path: "/",
+            component: Main,
+        }
+    ];
+
+    const router = new VueRouter({
+        routes: routes,
+        mode: "hash",
+        base: "/",
+    });
+
+    var app = new Vue({
+        el: "#app",
+        router: router,
+        data() {
+            return {};
+        },
+        mounted() {
+        },
+        methods: {},
+    });
+</script>
+
+</html>
