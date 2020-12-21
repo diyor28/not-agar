@@ -9,7 +9,7 @@ import (
 type SelfPlayer struct {
 	Uuid     string  `json:"uuid"`
 	Nickname string  `json:"nickname"`
-	Color    string  `json:"color"`
+	Color    [3]int  `json:"color"`
 	X        float32 `json:"x"`
 	Y        float32 `json:"y"`
 	Weight   float32 `json:"weight"`
@@ -23,7 +23,7 @@ type Player struct {
 	Nickname   string  `json:"nickname"`
 	DirectionX int     `json:"-"`
 	DirectionY int     `json:"-"`
-	Color      string  `json:"color"`
+	Color      [3]int  `json:"color"`
 	X          float32 `json:"x"`
 	Y          float32 `json:"y"`
 	Weight     float32 `json:"weight"`
@@ -46,7 +46,13 @@ func (pl Player) getSelfPlayer() SelfPlayer {
 	}
 }
 
-func (pl Player) foodEatable(food Food) bool {
+func (pl *Player) passiveWeightLoss() {
+	if pl.Weight > minWeight*3 {
+		pl.Weight = pl.Weight * 0.9999
+	}
+}
+
+func (pl Player) foodEatable(food *Food) bool {
 	diff := utils.CalcDistance(pl.X, food.X, pl.Y, food.Y)
 	return diff < pl.Weight/2
 }
@@ -54,8 +60,8 @@ func (pl Player) foodEatable(food Food) bool {
 func (pl *Player) updatePosition() {
 	newX := float64(pl.X + pl.Speed*float32(pl.DirectionX))
 	newY := float64(pl.Y + pl.Speed*float32(pl.DirectionY))
-	pl.X = float32(math.Max(math.Min(newX, maxX), minX))
-	pl.Y = float32(math.Max(math.Min(newY, maxY), minY))
+	pl.X = float32(math.Max(math.Min(newX, maxXY), minXY))
+	pl.Y = float32(math.Max(math.Min(newY, maxXY), minXY))
 	newZoom := float64((minWeight/pl.Weight)*(maxZoom-minZoom)) + minZoom
 	pl.Zoom = float32(math.Max(newZoom, minZoom))
 }
@@ -73,11 +79,23 @@ func (pl *Player) updateDirection(directionX int, directionY int) {
 	pl.DirectionY = directionY
 }
 
-func (pl Player) playerEatable(anotherPlayer Player) bool {
+func (pl Player) playerEatable(anotherPlayer *Player) bool {
 	diff := utils.CalcDistance(pl.X, anotherPlayer.X, pl.Y, anotherPlayer.Y)
 	radius1 := float64(pl.Weight) / 2
 	radius2 := float64(anotherPlayer.Weight) / 2
-	return diff < float32(math.Abs(radius1-radius2))
+	closeEnough := diff < float32(math.Abs(radius1-radius2))
+	bigEnough := pl.Weight*0.81 > anotherPlayer.Weight
+	return bigEnough && closeEnough
+}
+
+func (pl *Player) eatPlayer(anotherPlayer *Player) {
+	pl.Weight = newWeight(pl.Weight, anotherPlayer.Weight)
+	pl.Speed = getSpeedFromWeight(anotherPlayer.Weight)
+}
+
+func (pl *Player) eatFood(food *Food) {
+	pl.Weight = newWeight(pl.Weight, food.Weight)
+	pl.Speed = getSpeedFromWeight(pl.Weight)
 }
 
 type DirectionEvaluator struct {
@@ -96,9 +114,28 @@ func (dEval *DirectionEvaluator) isAction(dirX int, dirY int) bool {
 	return (dEval.Actions[0] == dirX) && (dEval.Actions[1] == dirY)
 }
 
+func (pl *Player) closesFood(gameMap GameMap, k int) []Food {
+	var result []Food
+	foods := gameMap.Foods
+	foodCount := len(foods)
+	if foodCount < k {
+		k = foodCount
+	}
+	for i := 0; i < k; i++ {
+		var minIdx = i
+		for j := i; j < foodCount; j++ {
+			if foods[j].Weight < foods[minIdx].Weight {
+				minIdx = j
+			}
+		}
+		foods[i], foods[minIdx] = foods[minIdx], foods[i]
+	}
+	return result
+}
+
 func (pl *Player) makeMove(gameMap *GameMap) {
 	//pls := gameMap.nearByPlayers(gBot.Player)
-	foods := gameMap.nearByFood(*pl)
+	foods := gameMap.nearByFood(pl)
 	closestFood := foods[0]
 	var closesDist float32 = 0.0
 	for _, f := range foods {
@@ -111,8 +148,14 @@ func (pl *Player) makeMove(gameMap *GameMap) {
 
 	diffX := float64(closestFood.X - pl.X)
 	diffY := float64(closestFood.Y - pl.Y)
-	var directionX = int(diffX / math.Abs(diffX))
-	var directionY = int(diffY / math.Abs(diffY))
+	directionX := 0
+	directionY := 0
+	if diffX != 0 {
+		directionX = int(math.Copysign(1, diffX))
+	}
+	if diffY != 0 {
+		directionY = int(math.Copysign(1, diffY))
+	}
 	pl.updateDirection(directionX, directionY)
 }
 
