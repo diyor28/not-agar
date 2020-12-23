@@ -1,12 +1,12 @@
 package gamengine
 
 import (
+	"github.com/diyor28/not-agar/randomname"
 	"github.com/frankenbeanies/uuid4"
 	"github.com/gorilla/websocket"
 	"log"
 	"math"
 	"math/rand"
-	"randomname"
 	"sync"
 	"time"
 )
@@ -75,7 +75,7 @@ var colors = [][3]int{{255, 21, 21}, {255, 243, 21}, {21, 87, 255}, {21, 255, 20
 
 type Connection struct {
 	ConnectionId string
-	Socket   *websocket.Conn
+	Socket       *websocket.Conn
 	lock         *sync.Mutex
 }
 
@@ -97,7 +97,7 @@ type GameMap struct {
 func (gMap *GameMap) AddConnection(conn *websocket.Conn) *Connection {
 	connection := Connection{
 		ConnectionId: uuid4.New().String(),
-		Socket:   conn,
+		Socket:       conn,
 		lock:         &sync.Mutex{},
 	}
 	gMap.connections = append(gMap.connections, connection)
@@ -228,12 +228,12 @@ func (gMap GameMap) GetStats() ServerResponse {
 		Weight   int    `json:"weight"`
 	}
 	players := gMap.Players
-	var topPlayers []StatsResponse
 	numOfPlayers := len(players)
 	playersInStats := statsNumber
 	if numOfPlayers < statsNumber {
 		playersInStats = numOfPlayers
 	}
+	var topPlayers []StatsResponse
 	for i := 0; i < playersInStats; i++ {
 		var maxIdx = i
 		for j := i; j < numOfPlayers; j++ {
@@ -242,10 +242,9 @@ func (gMap GameMap) GetStats() ServerResponse {
 			}
 		}
 		players[i], players[maxIdx] = players[maxIdx], players[i]
-		topPlayers = append(topPlayers, StatsResponse{
-			Nickname: players[maxIdx].Nickname,
-			Weight:   int(players[maxIdx].Weight),
-		})
+	}
+	for i := 0; i < playersInStats; i++ {
+		topPlayers = append(topPlayers, StatsResponse{Nickname: players[i].Nickname, Weight: int(players[i].Weight)})
 	}
 	return ServerResponse{
 		Event: "stats",
@@ -369,9 +368,9 @@ func (gMap *GameMap) removeEatablePlayers() {
 	if len(gMap.Players) < 2 {
 		return
 	}
-	var eatenPlayers = make(map[int]bool, len(gMap.Players))
+	var canBeEaten = make(map[int]bool, len(gMap.Players))
 	for i := 0; i < len(gMap.Players); i++ {
-		eatenPlayers[i] = false
+		canBeEaten[i] = false
 	}
 	for i := range gMap.Players {
 		p1 := &gMap.Players[i]
@@ -379,17 +378,20 @@ func (gMap *GameMap) removeEatablePlayers() {
 			p2 := &gMap.Players[k]
 			if p1.playerEatable(p2) {
 				p1.eatPlayer(p2)
-				eatenPlayers[k] = true
+				canBeEaten[k] = true
 			} else if p2.playerEatable(p1) {
 				p2.eatPlayer(p1)
-				eatenPlayers[i] = true
+				canBeEaten[i] = true
 			}
 		}
 	}
 	//fmt.Println(eatenPlayers)
 	var newPlayers []Player
-	for index, value := range eatenPlayers {
-		if !value {
+	var eatenPlayers []Player
+	for index, value := range canBeEaten {
+		if value {
+			eatenPlayers = append(eatenPlayers, gMap.Players[index])
+		} else {
 			newPlayers = append(newPlayers, gMap.Players[index])
 		}
 	}

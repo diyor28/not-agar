@@ -3,7 +3,7 @@ package gamengine
 import (
 	"fmt"
 	"math"
-	"utils"
+	"github.com/diyor28/not-agar/utils"
 )
 
 type SelfPlayer struct {
@@ -48,7 +48,7 @@ func (pl Player) getSelfPlayer() SelfPlayer {
 
 func (pl *Player) passiveWeightLoss() {
 	if pl.Weight > minWeight*3 {
-		pl.Weight = pl.Weight * 0.9999
+		pl.Weight = pl.Weight * 0.99999
 	}
 }
 
@@ -84,7 +84,7 @@ func (pl Player) playerEatable(anotherPlayer *Player) bool {
 	radius1 := float64(pl.Weight) / 2
 	radius2 := float64(anotherPlayer.Weight) / 2
 	closeEnough := diff < float32(math.Abs(radius1-radius2))
-	bigEnough := pl.Weight*0.81 > anotherPlayer.Weight
+	bigEnough := pl.Weight*0.85 > anotherPlayer.Weight
 	return bigEnough && closeEnough
 }
 

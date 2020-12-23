@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  back:
+    container_name: notagar_back
+    build: ./back
+    restart: always
+    ports:
+      - "3100:3100"
+
+  front:
+    container_name: notagar_front
+    build: ./front
+    restart: always
+    ports:
+      - "3000:80"

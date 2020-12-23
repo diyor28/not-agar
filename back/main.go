@@ -2,7 +2,7 @@ package main
 
 import (
 	"encoding/json"
-	"gamengine"
+	"github.com/diyor28/not-agar/gamengine"
 	"github.com/frankenbeanies/uuid4"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
