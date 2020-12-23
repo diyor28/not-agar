@@ -2,8 +2,8 @@ package gamengine
 
 import (
 	"fmt"
-	"math"
 	"github.com/diyor28/not-agar/utils"
+	"math"
 )
 
 type SelfPlayer struct {

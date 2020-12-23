@@ -36,7 +36,7 @@ export default class Player extends Entity {
         p5.fill(textColor)
         p5.textAlign(p5.CENTER, p5.CENTER)
         p5.textSize(this.weight / 5)
-        p5.text(this.nickname + `(${Math.round(this.weight)})`, this.x, this.y)
+        p5.text(this.nickname, this.x, this.y)
     }
 }
 
