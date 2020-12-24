@@ -160,8 +160,8 @@ func (gMap *GameMap) AddConnection(conn *websocket.Conn) *Connection {
 }
 
 func (gMap *GameMap) populateBots() {
-	//maxBots := (maxPlayers - len(gMap.Players)) / 2
-	maxBots := 0
+	maxBots := (maxPlayers - len(gMap.Players)) / 2
+	//maxBots := 0
 	currentBots := 0
 	for _, player := range gMap.Players {
 		if player.IsBot {
