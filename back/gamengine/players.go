@@ -1,7 +1,6 @@
 package gamengine
 
 import (
-	"fmt"
 	"github.com/diyor28/not-agar/utils"
 	"math"
 )
@@ -19,17 +18,18 @@ type SelfPlayer struct {
 }
 
 type Player struct {
-	Uuid       string  `json:"-"`
-	Nickname   string  `json:"nickname"`
-	DirectionX int     `json:"-"`
-	DirectionY int     `json:"-"`
-	Color      [3]int  `json:"color"`
-	X          float32 `json:"x"`
-	Y          float32 `json:"y"`
-	Weight     float32 `json:"weight"`
-	Speed      float32 `json:"-"`
-	Zoom       float32 `json:"-"`
-	IsBot      bool    `json:"-"`
+	Uuid         string  `json:"-"`
+	Nickname     string  `json:"nickname"`
+	VelocityX    float32 `json:"-"`
+	VelocityY    float32 `json:"-"`
+	Color        [3]int  `json:"color"`
+	X            float32 `json:"x"`
+	Y            float32 `json:"y"`
+	Weight       float32 `json:"weight"`
+	Accelerating bool    `json:"-"`
+	Speed        float32 `json:"-"`
+	Zoom         float32 `json:"-"`
+	IsBot        bool    `json:"-"`
 }
 
 func (pl Player) getSelfPlayer() SelfPlayer {
@@ -58,25 +58,28 @@ func (pl Player) foodEatable(food *Food) bool {
 }
 
 func (pl *Player) updatePosition() {
-	newX := float64(pl.X + pl.Speed*float32(pl.DirectionX))
-	newY := float64(pl.Y + pl.Speed*float32(pl.DirectionY))
+	speed := pl.Speed
+	if pl.Accelerating {
+		speed = float32(math.Max(float64(speed*2), maxSpeed))
+
+		pl.Accelerating = false
+	}
+	newX := float64(pl.X + speed*pl.VelocityX)
+	newY := float64(pl.Y + speed*pl.VelocityY)
 	pl.X = float32(math.Max(math.Min(newX, maxXY), minXY))
 	pl.Y = float32(math.Max(math.Min(newY, maxXY), minXY))
 	newZoom := float64((minWeight/pl.Weight)*(maxZoom-minZoom)) + minZoom
 	pl.Zoom = float32(math.Max(newZoom, minZoom))
 }
 
-func (pl *Player) updateDirection(directionX int, directionY int) {
-	if !validDirection[directionX] {
-		fmt.Println("Sent an invalid direction", directionX)
-		return
-	}
-	if !validDirection[directionY] {
-		fmt.Println("Sent an invalid direction", directionY)
-		return
-	}
-	pl.DirectionX = directionX
-	pl.DirectionY = directionY
+func (pl *Player) updateDirection(newX float32, newY float32) {
+	dist := float64(utils.CalcDistance(pl.X, newX, pl.Y, newY))
+	diffX := float64(newX - pl.X)
+	diffY := float64(newY - pl.Y)
+	velocityX := diffX / dist
+	velocityY := diffY / dist
+	pl.VelocityX = float32(velocityX)
+	pl.VelocityY = float32(velocityY)
 }
 
 func (pl Player) playerEatable(anotherPlayer *Player) bool {
@@ -145,18 +148,7 @@ func (pl *Player) makeMove(gameMap *GameMap) {
 			closesDist = dist
 		}
 	}
-
-	diffX := float64(closestFood.X - pl.X)
-	diffY := float64(closestFood.Y - pl.Y)
-	directionX := 0
-	directionY := 0
-	if diffX != 0 {
-		directionX = int(math.Copysign(1, diffX))
-	}
-	if diffY != 0 {
-		directionY = int(math.Copysign(1, diffY))
-	}
-	pl.updateDirection(directionX, directionY)
+	pl.updateDirection(closestFood.X, closestFood.Y)
 }
 
 //

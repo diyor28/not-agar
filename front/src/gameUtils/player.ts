@@ -77,14 +77,13 @@ export class SelfPlayer extends Player {
     move(mouseX: number, mouseY: number) {
         if (!this.width || !this.height)
             return;
-        const diffX = mouseX - (this.width / 2)
-        const diffY = mouseY - (this.height / 2)
-        const directionX = diffX ? diffX / Math.abs(diffX) : 0
-        const directionY = diffY ? diffY / Math.abs(diffY) : 0
+        const newX = this._x + mouseX - this.width / 2
+        const newY = this._y + mouseY - this.height / 2
+
         const data = {
             uuid: this.uuid,
-            directionX,
-            directionY
+            newX: newX,
+            newY: newY
         }
         this.socket.emit('move', data)
     }

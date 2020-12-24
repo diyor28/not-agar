@@ -6,7 +6,6 @@ import (
 	"github.com/frankenbeanies/uuid4"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
-	"github.com/mitchellh/mapstructure"
 	"log"
 	"net/http"
 	"runtime"
@@ -23,42 +22,21 @@ var upgrader = websocket.Upgrader{
 	WriteBufferSize: 1024,
 }
 
-func parseRequest(conn *websocket.Conn) (gamengine.Player, int, error) {
+func parseRequest(conn *websocket.Conn) (gamengine.ServerRequest, error) {
 	var request gamengine.ServerRequest
-	messageType, p, err := conn.ReadMessage()
-	if err != nil {
-		log.Println(err)
-		return gamengine.Player{}, messageType, err
-	}
-	_ = json.Unmarshal(p, &request)
-	var moveEvent = gamengine.MoveEvent{}
-	if err = mapstructure.Decode(request.Data, &moveEvent); err != nil {
-		log.Println(err)
-		return gamengine.Player{}, messageType, err
-	}
-	if moveEvent.Uuid == "" {
-		return gamengine.Player{}, messageType, err
-	}
-	player := gameMap.GetPlayer(moveEvent.Uuid)
-	if player.Uuid == "" {
-		return gamengine.Player{}, messageType, err
-	}
-	gameMap.UpdatePlayer(moveEvent)
-	return player, messageType, err
+	err := conn.ReadJSON(&request)
+	return request, err
 }
 
 func reader(conn *websocket.Conn) {
 	connection := gameMap.AddConnection(conn)
 	for {
-		receivedPlayer, _, err := parseRequest(conn)
+		request, err := parseRequest(connection.Socket)
 		if err != nil {
 			log.Println(err)
 			return
 		}
-		if err := connection.WriteJSON(gameMap.ServerResponse(&receivedPlayer)); err != nil {
-			log.Println(err)
-			return
-		}
+		gameMap.HandleEvent(request, connection)
 	}
 }
 
@@ -67,6 +45,7 @@ func websocketEndpoint(w http.ResponseWriter, r *http.Request) {
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println(err)
+		return
 	}
 	reader(ws)
 }

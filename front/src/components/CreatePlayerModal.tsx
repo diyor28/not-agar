@@ -2,9 +2,11 @@ import React, {FormEvent} from 'react';
 import Modal from './Modal'
 import axios from 'axios'
 import '../App.css'
+import ButtonLoading from './ButtonLoading'
 
 export interface Props {
-    onCreated: Function
+    onCreated: Function,
+    socketOpen: boolean
 }
 
 export default class CreatePlayerModal extends React.Component<Props, {}> {
@@ -39,12 +41,15 @@ export default class CreatePlayerModal extends React.Component<Props, {}> {
                        width={300}
                        show={this.state.show} footerClass="align-center"
                        footer={
-                           <button className="btn btn-lg btn-success" onClick={this.createPlayer}>
+                           <ButtonLoading btnClass="btn btn-lg btn-success"
+                                          loading={!this.props.socketOpen}
+                                          onClick={this.createPlayer}>
                                Play
-                           </button>
+                           </ButtonLoading>
                        }>
                     <form onSubmit={this.createPlayer}>
-                        <input className={'my-5'} placeholder={'Your nickname'} type="text" value={this.state.nickname} onChange={this.handleChange}/>
+                        <input className={'my-5'} placeholder={'Your nickname'} type="text" value={this.state.nickname}
+                               onChange={this.handleChange}/>
                     </form>
                 </Modal>
             </div>

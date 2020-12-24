@@ -1,11 +1,22 @@
 export class SocketWrapper {
     public readonly socket: WebSocket;
     private eventListeners: { event: string, callback: (data: any) => void }[];
+    private onOpenListeners: Function[]
 
     constructor(socket: WebSocket) {
         this.socket = socket
         this.eventListeners = []
+        this.onOpenListeners = []
         this.socket.onmessage = this.triggerHandlers.bind(this)
+        this.socket.onopen = (event: Event) => {
+            this.onOpenListeners.forEach(callback => {
+                callback()
+            })
+        }
+    }
+
+    onopen(callback: (data: any) => void) {
+        this.onOpenListeners.push(callback)
     }
 
     triggerHandlers(event: MessageEvent) {
@@ -33,4 +44,10 @@ export class SocketWrapper {
 export function lightenDarkenColor(color: number[], percent: number) {
     const [R, G, B] = color
     return [R + percent, G + percent, B + percent]
+}
+
+export function calcDistance(x1: number, y1: number, x2: number, y2: number) {
+    let dX = x2 - x1
+    let dY = y2 - y1
+    return Math.sqrt(dX * dX + dY * dY)
 }

@@ -41,7 +41,7 @@
 //         })
 //     }
 // }
-import Player, {SelfPlayerData, PlayerData, SelfPlayer} from "./player";
+import Player, {PlayerData, SelfPlayer, SelfPlayerData} from "./player";
 import {SocketWrapper} from "./utils";
 import Food, {FoodData} from "./food";
 import p5Types from "p5"; //Import this for typechecking and intellisense
@@ -86,6 +86,12 @@ export default class Game {
         this.stats = data
     }
 
+    accelerate() {
+        if (!this.selfPlayer)
+            return
+        this.socket.emit('accelerate', {uuid: this.selfPlayer.uuid})
+    }
+
     onMoved(data: { selfPlayer: SelfPlayerData, players: PlayerData[], foods: FoodData[] }) {
         const selfPlayer = data.selfPlayer
         if (!this.selfPlayer)
@@ -126,11 +132,11 @@ export default class Game {
             return
         p5.background(240);
         p5.translate(this.width / 2, this.height / 2);
+        this.zoom -= 0.1 * (this.zoom - this.selfPlayer.zoom)
+        p5.scale(this.zoom);
         this.selfPlayer.move(p5.mouseX, p5.mouseY)
         this.selfPlayer.draw(p5)
         this.drawAll(p5)
-        this.zoom -= 0.1 * (this.zoom - this.selfPlayer.zoom)
-        p5.scale(this.zoom);
     }
 
     drawAll(p5: p5Types) {

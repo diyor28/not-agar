@@ -2,7 +2,6 @@ import React from 'react';
 import Sketch from 'react-p5';
 import Game from "./gameUtils/GameEngine";
 import CreatePlayerModal from "./components/CreatePlayerModal";
-import p5Types from "p5"; //Import this for typechecking and intellisense
 import {SelfPlayerData} from "./gameUtils/player";
 import Stats from "./Stats";
 
@@ -13,7 +12,8 @@ class App extends React.Component {
     game = new Game(width, height)
     state = {
         show: false,
-        stats: []
+        stats: [],
+        socketOpen: false
     };
 
     componentDidMount() {
@@ -21,6 +21,17 @@ class App extends React.Component {
             if (!data)
                 return
             this.setState({stats: data})
+        })
+
+        this.game.socket.onopen(data => {
+            this.setState({socketOpen: true})
+        })
+
+        window.addEventListener('keydown', (event: KeyboardEvent) => {
+            if (event.key !== 'a') {
+                return
+            }
+            this.game.accelerate()
         })
     }
 
@@ -31,7 +42,7 @@ class App extends React.Component {
     render() {
         return (
             <div className="App">
-                <CreatePlayerModal onCreated={this.onCreated}/>
+                <CreatePlayerModal socketOpen={this.state.socketOpen} onCreated={this.onCreated}/>
                 <Stats stats={this.state.stats}/>
                 <Sketch
                     setup={(p5, parentRef) => {

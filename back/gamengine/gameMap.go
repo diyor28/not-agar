@@ -1,9 +1,11 @@
 package gamengine
 
 import (
+	"errors"
 	"github.com/diyor28/not-agar/randomname"
 	"github.com/frankenbeanies/uuid4"
 	"github.com/gorilla/websocket"
+	"github.com/mitchellh/mapstructure"
 	"log"
 	"math"
 	"math/rand"
@@ -12,11 +14,12 @@ import (
 )
 
 const maxXY = 5000
+const foodWeight = 25
 const surfaceArea = maxXY * maxXY
 const minXY = 0
 const windowSize = 1200
-const minSpeed = 1.1
-const maxSpeed = 5
+const minSpeed = 2
+const maxSpeed = 8
 const maxNumFood = surfaceArea / 50000
 const minWeight = 40
 const maxWeight = minWeight * 15
@@ -24,7 +27,7 @@ const minZoom = 0.8
 const maxZoom = 1.0
 const maxPlayers = 20
 const maxSpikes = maxPlayers
-const statsNumber = 5
+const statsNumber = 10
 const speedWeightLimit = 300
 
 type ServerResponse struct {
@@ -38,9 +41,13 @@ type ServerRequest struct {
 }
 
 type MoveEvent struct {
-	Uuid       string `json:"uuid"`
-	DirectionX int    `json:"directionX"`
-	DirectionY int    `json:"directionY"`
+	Uuid string  `json:"uuid"`
+	NewX float32 `json:"newX"`
+	NewY float32 `json:"newY"`
+}
+
+type AccelerateEvent struct {
+	Uuid string `json:"uuid"`
 }
 
 type MovedEvent struct {
@@ -49,8 +56,6 @@ type MovedEvent struct {
 	Foods      []Food     `json:"foods"`
 	Spikes     []Spike    `json:"spikes"`
 }
-
-var validDirection = map[int]bool{1: true, -1: true, 0: true}
 
 func getRandomColor() [3]int {
 	return colors[rand.Intn(len(colors))]
@@ -86,12 +91,62 @@ func (conn *Connection) WriteJSON(v interface{}) error {
 	return err
 }
 
+func (conn *Connection) Emit(event string, data interface{}) error {
+	return conn.WriteJSON(ServerResponse{Event: event, Data: data})
+}
+
 type GameMap struct {
 	GameId      string
 	Players     []Player `json:"players"`
 	Foods       []Food   `json:"foods"`
 	Spikes      []Spike  `json:"spikes"`
 	connections []Connection
+}
+
+func (gMap *GameMap) handleMoveEvent(data interface{}, conn *Connection) {
+	var moveData MoveEvent
+	if err := mapstructure.Decode(data, &moveData); err != nil {
+		log.Fatal(err)
+		return
+	}
+	player, err := gMap.UpdatePlayer(moveData.Uuid, moveData.NewX, moveData.NewY)
+	if err != nil {
+		log.Fatal("update player", err)
+		return
+	}
+	foods := gMap.nearByFood(player)
+	players := gMap.nearByPlayers(player)
+	response := MovedEvent{
+		SelfPlayer: player.getSelfPlayer(),
+		Foods:      foods,
+		Players:    players,
+	}
+	if err := conn.Emit("moved", response); err != nil {
+		log.Fatal("Socket emit", err)
+	}
+}
+
+func (gMap *GameMap) handleAccelerate(data interface{}, conn *Connection) {
+	var accelerateData AccelerateEvent
+	if err := mapstructure.Decode(data, &accelerateData); err != nil {
+		log.Fatal(err)
+		return
+	}
+	player, err := gMap.GetPlayer(accelerateData.Uuid)
+	if err != nil {
+		log.Fatal("could not find player", err)
+		return
+	}
+	player.Accelerating = true
+}
+
+func (gMap *GameMap) HandleEvent(request ServerRequest, conn *Connection) {
+	switch request.Event {
+	case "move":
+		gMap.handleMoveEvent(request.Data, conn)
+	case "accelerate":
+		gMap.handleAccelerate(request.Data, conn)
+	}
 }
 
 func (gMap *GameMap) AddConnection(conn *websocket.Conn) *Connection {
@@ -105,8 +160,8 @@ func (gMap *GameMap) AddConnection(conn *websocket.Conn) *Connection {
 }
 
 func (gMap *GameMap) populateBots() {
-	maxBots := (maxPlayers - len(gMap.Players)) / 2
-	//maxBots := 0
+	//maxBots := (maxPlayers - len(gMap.Players)) / 2
+	maxBots := 0
 	currentBots := 0
 	for _, player := range gMap.Players {
 		if player.IsBot {
@@ -192,20 +247,6 @@ func (gMap *GameMap) Run() {
 		gMap.removeEatablePlayers()
 		time.Sleep(15 * time.Millisecond)
 	}
-}
-
-func (gMap *GameMap) ServerResponse(player *Player) ServerResponse {
-	foods := gMap.nearByFood(player)
-	players := gMap.nearByPlayers(player)
-	serverResponse := ServerResponse{
-		Event: "moved",
-		Data: MovedEvent{
-			SelfPlayer: player.getSelfPlayer(),
-			Foods:      foods,
-			Players:    players,
-		},
-	}
-	return serverResponse
 }
 
 func (gMap *GameMap) nearByFood(player *Player) []Food {
@@ -300,33 +341,34 @@ func (gMap *GameMap) createFood() Food {
 		X:      x,
 		Y:      y,
 		Color:  getRandomColor(),
-		Weight: 25,
+		Weight: foodWeight,
 	}
 	gMap.Foods = append(gMap.Foods, food)
 	return food
 }
 
-func (gMap *GameMap) GetPlayer(uuid string) Player {
-	for _, p := range gMap.Players {
-		if p.Uuid == uuid {
-			return p
+func (gMap *GameMap) GetPlayer(uuid string) (*Player, error) {
+	for i := range gMap.Players {
+		if gMap.Players[i].Uuid == uuid {
+			return &gMap.Players[i], nil
 		}
 	}
-	return Player{}
+	return nil, errors.New("no player found")
 }
 
 func (gMap *GameMap) CreatePlayer(nickname string, isBot bool) SelfPlayer {
 	x, y := getRandomCoordinate()
 	player := Player{
-		Uuid:     uuid4.New().String(),
-		X:        x,
-		Y:        y,
-		Color:    getRandomColor(),
-		Weight:   minWeight,
-		Speed:    maxSpeed,
-		Zoom:     1,
-		Nickname: nickname,
-		IsBot:    isBot,
+		Uuid:         uuid4.New().String(),
+		X:            x,
+		Y:            y,
+		Color:        getRandomColor(),
+		Weight:       minWeight,
+		Accelerating: false,
+		Speed:        maxSpeed,
+		Zoom:         1,
+		Nickname:     nickname,
+		IsBot:        isBot,
 	}
 	if len(gMap.Players) >= maxPlayers {
 		gMap.removePlayerIndex(0)
@@ -335,15 +377,13 @@ func (gMap *GameMap) CreatePlayer(nickname string, isBot bool) SelfPlayer {
 	return player.getSelfPlayer()
 }
 
-func (gMap *GameMap) UpdatePlayer(event MoveEvent) *Player {
-	for i, p := range gMap.Players {
-		if p.Uuid == event.Uuid {
-			player := &gMap.Players[i]
-			player.updateDirection(event.DirectionX, event.DirectionY)
-			return player
-		}
+func (gMap *GameMap) UpdatePlayer(uuid string, newX float32, newY float32) (*Player, error) {
+	player, err := gMap.GetPlayer(uuid)
+	if err != nil {
+		return nil, err
 	}
-	return &Player{}
+	player.updateDirection(newX, newY)
+	return player, nil
 }
 
 func (gMap *GameMap) removeEatableFood() {
@@ -395,5 +435,8 @@ func (gMap *GameMap) removeEatablePlayers() {
 			newPlayers = append(newPlayers, gMap.Players[index])
 		}
 	}
+	//for _, conn := range gMap.connections {
+	//	_ = conn.Emit("removed", eatenPlayers)
+	//}
 	gMap.Players = newPlayers
 }
