@@ -1,25 +1,40 @@
 export class SocketWrapper {
     public readonly socket: WebSocket;
     private eventListeners: { event: string, callback: (data: any) => void }[];
-    private onOpenListeners: Function[]
+    private openListeners: Function[];
+    public ping: number | null;
+    public pingInterval: number
+    public count: number
 
-    constructor(socket: WebSocket) {
+    constructor(socket: WebSocket, pingInterval: number) {
         this.socket = socket
         this.eventListeners = []
-        this.onOpenListeners = []
+        this.openListeners = []
+        this.pingInterval = pingInterval
+        this.count = 0
+        this.ping = null
         this.socket.onmessage = this.triggerHandlers.bind(this)
         this.socket.onopen = (event: Event) => {
-            this.onOpenListeners.forEach(callback => {
-                callback()
+            this.pingPong()
+            this.openListeners.forEach(callback => {
+                callback(event)
             })
         }
+
+        this.on('pong', (data: { timestamp: number }) => {
+            const currentTime = new Date().getTime()
+            this.ping = currentTime - data.timestamp
+        })
+
     }
 
-    onopen(callback: (data: any) => void) {
-        this.onOpenListeners.push(callback)
+    pingPong() {
+        this.emit('ping', {timestamp: new Date().getTime(), count: this.count})
+        this.count++
+        setTimeout(() => this.pingPong(), this.pingInterval)
     }
 
-    triggerHandlers(event: MessageEvent) {
+    private triggerHandlers(event: MessageEvent) {
         const data = JSON.parse(event.data)
         this.eventListeners.forEach(listener => {
             if (listener.event === data.event) {
@@ -37,13 +52,21 @@ export class SocketWrapper {
     }
 
     on(event: string, callback: (data: any) => void) {
-        this.eventListeners.push({event, callback})
+        if (event === 'open')
+            this.openListeners.push(callback)
+        else
+            this.eventListeners.push({event, callback})
     }
+}
+
+export function clipValue(color: number) {
+    return Math.min(Math.max(color, 0), 255)
 }
 
 export function lightenDarkenColor(color: number[], percent: number) {
     const [R, G, B] = color
-    return [R + percent, G + percent, B + percent]
+
+    return [clipValue(R + percent), clipValue(G + percent), clipValue(B + percent)]
 }
 
 export function calcDistance(x1: number, y1: number, x2: number, y2: number) {

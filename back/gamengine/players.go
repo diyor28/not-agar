@@ -61,7 +61,6 @@ func (pl *Player) updatePosition() {
 	speed := pl.Speed
 	if pl.Accelerating {
 		speed = float32(math.Max(float64(speed*2), maxSpeed))
-
 		pl.Accelerating = false
 	}
 	newX := float64(pl.X + speed*pl.VelocityX)

@@ -111,7 +111,7 @@ func (gMap *GameMap) handleMoveEvent(data interface{}, conn *Connection) {
 	}
 	player, err := gMap.UpdatePlayer(moveData.Uuid, moveData.NewX, moveData.NewY)
 	if err != nil {
-		log.Fatal("update player", err)
+		log.Fatal("could not update player ", err)
 		return
 	}
 	foods := gMap.nearByFood(player)
@@ -140,12 +140,18 @@ func (gMap *GameMap) handleAccelerate(data interface{}, conn *Connection) {
 	player.Accelerating = true
 }
 
+func (gMap *GameMap) sendPong(data interface{}, conn *Connection) error {
+	return conn.Emit("pong", data)
+}
+
 func (gMap *GameMap) HandleEvent(request ServerRequest, conn *Connection) {
 	switch request.Event {
 	case "move":
 		gMap.handleMoveEvent(request.Data, conn)
 	case "accelerate":
 		gMap.handleAccelerate(request.Data, conn)
+	case "ping":
+		_ = gMap.sendPong(request.Data, conn)
 	}
 }
 
@@ -430,13 +436,18 @@ func (gMap *GameMap) removeEatablePlayers() {
 	var eatenPlayers []Player
 	for index, value := range canBeEaten {
 		if value {
+			if gMap.Players[index].IsBot {
+				continue
+			}
 			eatenPlayers = append(eatenPlayers, gMap.Players[index])
 		} else {
 			newPlayers = append(newPlayers, gMap.Players[index])
 		}
 	}
 	//for _, conn := range gMap.connections {
-	//	_ = conn.Emit("removed", eatenPlayers)
+	//	if err := conn.Emit("removed", eatenPlayers); err != nil {
+	//		log.Fatal(err)
+	//	}
 	//}
 	gMap.Players = newPlayers
 }

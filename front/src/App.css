@@ -1,3 +1,10 @@
+:root {
+    --danger-color: #dc3545;
+    --warning-color: #ffc107;
+    --primary-color: #007bff;
+    --success-color: #28a745
+}
+
 .App {
     text-align: center;
 }
@@ -5,6 +12,50 @@
 .App-logo {
     height: 40vmin;
     pointer-events: none;
+}
+
+.ping-div {
+    right: 10px;
+    bottom: 10px;
+    position: absolute;
+    display: flex;
+    align-items: center;
+    padding-left: 5px;
+    width: 80px;
+}
+
+.ping-div .ping-text {
+    margin-left: 2px;
+    margin-bottom: 2px;
+}
+
+.dot {
+    height: 25px;
+    width: 25px;
+    background-color: #bbb;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.dot-sm {
+    height: 15px;
+    width: 15px;
+}
+
+.dot-danger {
+    background-color: var(--danger-color);
+}
+
+.dot-primary {
+    background-color: var(--primary-color);
+}
+
+.dot-success {
+    background-color: var(--success-color);
+}
+
+.dot-warning {
+    background-color: var(--warning-color);
 }
 
 .leaderboard {

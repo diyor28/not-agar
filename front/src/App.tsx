@@ -4,6 +4,7 @@ import Game from "./gameUtils/GameEngine";
 import CreatePlayerModal from "./components/CreatePlayerModal";
 import {SelfPlayerData} from "./gameUtils/player";
 import Stats from "./Stats";
+import Ping from "./Ping";
 
 const height = window.innerHeight - 10;
 const width = window.innerWidth - 10;
@@ -13,7 +14,8 @@ class App extends React.Component {
     state = {
         show: false,
         stats: [],
-        socketOpen: false
+        socketOpen: false,
+        ping: null
     };
 
     componentDidMount() {
@@ -23,8 +25,12 @@ class App extends React.Component {
             this.setState({stats: data})
         })
 
-        this.game.socket.onopen(data => {
+        this.game.socket.on('open', data => {
             this.setState({socketOpen: true})
+        })
+
+        this.game.socket.on('pong', () => {
+            this.setState({ping: this.game.ping})
         })
 
         window.addEventListener('keydown', (event: KeyboardEvent) => {
@@ -42,6 +48,7 @@ class App extends React.Component {
     render() {
         return (
             <div className="App">
+                <Ping ping={this.state.ping}/>
                 <CreatePlayerModal socketOpen={this.state.socketOpen} onCreated={this.onCreated}/>
                 <Stats stats={this.state.stats}/>
                 <Sketch

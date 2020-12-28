@@ -22,21 +22,21 @@ var upgrader = websocket.Upgrader{
 	WriteBufferSize: 1024,
 }
 
-func parseRequest(conn *websocket.Conn) (gamengine.ServerRequest, error) {
+func parseRequest(conn *gamengine.Connection) (gamengine.ServerRequest, error) {
 	var request gamengine.ServerRequest
-	err := conn.ReadJSON(&request)
+	err := conn.Socket.ReadJSON(&request)
 	return request, err
 }
 
 func reader(conn *websocket.Conn) {
 	connection := gameMap.AddConnection(conn)
 	for {
-		request, err := parseRequest(connection.Socket)
+		request, err := parseRequest(connection)
 		if err != nil {
 			log.Println(err)
 			return
 		}
-		gameMap.HandleEvent(request, connection)
+		go gameMap.HandleEvent(request, connection)
 	}
 }
 

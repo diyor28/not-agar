@@ -70,7 +70,8 @@ export default class Game {
         this.stats = []
         // @ts-ignore
         this.socketUrl = process.env.REACT_APP_WS_URL
-        this.socket = new SocketWrapper(new WebSocket(this.socketUrl))
+        console.log('###created socket')
+        this.socket = new SocketWrapper(new WebSocket(this.socketUrl), 1000)
         this.zoom = 1.0
         this.socket.on('moved', data => this.onMoved(data))
         this.socket.on('stats', data => this.onStatsUpdate(data))
@@ -86,6 +87,10 @@ export default class Game {
         this.stats = data
     }
 
+    get ping() {
+        return this.socket.ping
+    }
+
     accelerate() {
         if (!this.selfPlayer)
             return
@@ -96,7 +101,6 @@ export default class Game {
         const selfPlayer = data.selfPlayer
         if (!this.selfPlayer)
             return
-        this.selfPlayer.uuid = data.selfPlayer.uuid
         this.selfPlayer.update(selfPlayer)
         let cameraX = selfPlayer.x
         let cameraY = selfPlayer.y;
