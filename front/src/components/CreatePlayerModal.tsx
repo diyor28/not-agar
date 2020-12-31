@@ -6,7 +6,6 @@ import ButtonLoading from './ButtonLoading'
 
 export interface Props {
     onCreated: Function,
-    socketOpen: boolean
 }
 
 export default class CreatePlayerModal extends React.Component<Props, {}> {
@@ -42,7 +41,6 @@ export default class CreatePlayerModal extends React.Component<Props, {}> {
                        show={this.state.show} footerClass="align-center"
                        footer={
                            <ButtonLoading btnClass="btn btn-lg btn-success"
-                                          loading={!this.props.socketOpen}
                                           onClick={this.createPlayer}>
                                Play
                            </ButtonLoading>
@@ -51,6 +49,7 @@ export default class CreatePlayerModal extends React.Component<Props, {}> {
                         <input className={'my-5'} placeholder={'Your nickname'} type="text" value={this.state.nickname}
                                onChange={this.handleChange}/>
                     </form>
+                    Tip: Press <kbd>a</kbd> to accelerate
                 </Modal>
             </div>
         );

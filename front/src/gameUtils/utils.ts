@@ -4,14 +4,12 @@ export class SocketWrapper {
     private openListeners: Function[];
     public ping: number | null;
     public pingInterval: number
-    public count: number
 
     constructor(socket: WebSocket, pingInterval: number) {
         this.socket = socket
         this.eventListeners = []
         this.openListeners = []
         this.pingInterval = pingInterval
-        this.count = 0
         this.ping = null
         this.socket.onmessage = this.triggerHandlers.bind(this)
         this.socket.onopen = (event: Event) => {
@@ -28,9 +26,8 @@ export class SocketWrapper {
 
     }
 
-    pingPong() {
-        this.emit('ping', {timestamp: new Date().getTime(), count: this.count})
-        this.count++
+    private pingPong() {
+        this.emit('ping', {timestamp: new Date().getTime()})
         setTimeout(() => this.pingPong(), this.pingInterval)
     }
 
@@ -41,6 +38,10 @@ export class SocketWrapper {
                 listener.callback(data.data)
             }
         })
+    }
+
+    close(code?: number, reason?: string) {
+        this.socket.close(code, reason)
     }
 
     emit(event: string, data: any) {

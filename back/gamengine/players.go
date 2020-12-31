@@ -27,6 +27,7 @@ type Player struct {
 	Y            float32 `json:"y"`
 	Weight       float32 `json:"weight"`
 	Accelerating bool    `json:"-"`
+	WeightBurned float32 `json:"-"`
 	Speed        float32 `json:"-"`
 	Zoom         float32 `json:"-"`
 	IsBot        bool    `json:"-"`
@@ -46,29 +47,43 @@ func (pl Player) getSelfPlayer() SelfPlayer {
 	}
 }
 
+func (pl *Player) getWeight() float32 {
+	return pl.Weight
+}
+
 func (pl *Player) passiveWeightLoss() {
-	if pl.Weight > minWeight*3 {
-		pl.Weight = pl.Weight * 0.99999
+	if pl.Weight > MinWeight*3 {
+		pl.setWeight(pl.Weight * 0.99999)
 	}
 }
 
-func (pl Player) foodEatable(food *Food) bool {
+func (pl *Player) foodEatable(food *Food) bool {
 	diff := utils.CalcDistance(pl.X, food.X, pl.Y, food.Y)
 	return diff < pl.Weight/2
 }
 
-func (pl *Player) updatePosition() {
+func (pl *Player) updatePosition(gMap *GameMap) {
 	speed := pl.Speed
 	if pl.Accelerating {
-		speed = float32(math.Max(float64(speed*2), maxSpeed))
+		speed = utils.Clip(speed*2, MinSpeed, MaxSpeed)
+		pl.WeightBurned += pl.Weight / 100
 		pl.Accelerating = false
 	}
-	newX := float64(pl.X + speed*pl.VelocityX)
-	newY := float64(pl.Y + speed*pl.VelocityY)
-	pl.X = float32(math.Max(math.Min(newX, maxXY), minXY))
-	pl.Y = float32(math.Max(math.Min(newY, maxXY), minXY))
-	newZoom := float64((minWeight/pl.Weight)*(maxZoom-minZoom)) + minZoom
-	pl.Zoom = float32(math.Max(newZoom, minZoom))
+	newX := pl.X + speed*pl.VelocityX
+	newY := pl.Y + speed*pl.VelocityY
+	newZoom := (MinWeight/pl.Weight)*(MaxZoom-MinZoom) + MinZoom
+	pl.X = utils.Clip(newX, MinXY, MaxXY)
+	pl.Y = utils.Clip(newY, MinXY, MaxXY)
+	pl.Zoom = utils.Clip(newZoom, MinZoom, MaxZoom)
+	if pl.WeightBurned >= FoodWeight {
+		pl.WeightBurned -= FoodWeight
+		pl.addWeight(-FoodWeight)
+		x := pl.X - speed*pl.VelocityX
+		y := pl.Y - speed*pl.VelocityY
+		x -= float32(math.Copysign(float64(pl.Weight), float64(pl.VelocityX))) * (pl.VelocityX * pl.VelocityX)
+		y -= float32(math.Copysign(float64(pl.Weight), float64(pl.VelocityY))) * (pl.VelocityY * pl.VelocityY)
+		gMap.createFood(x, y)
+	}
 }
 
 func (pl *Player) updateDirection(newX float32, newY float32) {
@@ -81,7 +96,7 @@ func (pl *Player) updateDirection(newX float32, newY float32) {
 	pl.VelocityY = float32(velocityY)
 }
 
-func (pl Player) playerEatable(anotherPlayer *Player) bool {
+func (pl Player) canEat(anotherPlayer *Player) bool {
 	diff := utils.CalcDistance(pl.X, anotherPlayer.X, pl.Y, anotherPlayer.Y)
 	radius1 := float64(pl.Weight) / 2
 	radius2 := float64(anotherPlayer.Weight) / 2
@@ -90,14 +105,20 @@ func (pl Player) playerEatable(anotherPlayer *Player) bool {
 	return bigEnough && closeEnough
 }
 
-func (pl *Player) eatPlayer(anotherPlayer *Player) {
-	pl.Weight = newWeight(pl.Weight, anotherPlayer.Weight)
-	pl.Speed = getSpeedFromWeight(anotherPlayer.Weight)
+func (pl *Player) addWeight(weight float32) {
+	sign := float32(math.Copysign(1, float64(weight)))
+	nWeight := math.Sqrt(float64(pl.Weight*pl.Weight + weight*weight*sign))
+	pl.setWeight(float32(nWeight))
 }
 
-func (pl *Player) eatFood(food *Food) {
-	pl.Weight = newWeight(pl.Weight, food.Weight)
-	pl.Speed = getSpeedFromWeight(pl.Weight)
+func (pl *Player) eatEntity(entity interface{ getWeight() float32 }) {
+	pl.setWeight(newWeight(pl.Weight, entity.getWeight()))
+}
+
+func (pl *Player) setWeight(weight float32) {
+	clippedWeight := utils.Clip(weight, MinWeight, MaxWeight)
+	pl.Weight = clippedWeight
+	pl.Speed = getSpeedFromWeight(clippedWeight)
 }
 
 type DirectionEvaluator struct {
@@ -116,37 +137,10 @@ func (dEval *DirectionEvaluator) isAction(dirX int, dirY int) bool {
 	return (dEval.Actions[0] == dirX) && (dEval.Actions[1] == dirY)
 }
 
-func (pl *Player) closesFood(gameMap GameMap, k int) []Food {
-	var result []Food
-	foods := gameMap.Foods
-	foodCount := len(foods)
-	if foodCount < k {
-		k = foodCount
-	}
-	for i := 0; i < k; i++ {
-		var minIdx = i
-		for j := i; j < foodCount; j++ {
-			if foods[j].Weight < foods[minIdx].Weight {
-				minIdx = j
-			}
-		}
-		foods[i], foods[minIdx] = foods[minIdx], foods[i]
-	}
-	return result
-}
-
 func (pl *Player) makeMove(gameMap *GameMap) {
 	//pls := gameMap.nearByPlayers(gBot.Player)
-	foods := gameMap.nearByFood(pl)
+	foods := gameMap.nearByFood(pl, 1)
 	closestFood := foods[0]
-	var closesDist float32 = 0.0
-	for _, f := range foods {
-		dist := utils.CalcDistance(pl.X, f.X, pl.Y, f.Y)
-		if dist < closesDist {
-			closestFood = f
-			closesDist = dist
-		}
-	}
 	pl.updateDirection(closestFood.X, closestFood.Y)
 }
 

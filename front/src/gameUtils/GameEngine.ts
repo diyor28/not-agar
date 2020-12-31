@@ -41,10 +41,11 @@
 //         })
 //     }
 // }
-import Player, {PlayerData, SelfPlayer, SelfPlayerData} from "./player";
+import Player, {MovedEvent, PlayerData, SelfPlayer, SelfPlayerData} from "./player";
 import {SocketWrapper} from "./utils";
 import Food, {FoodData} from "./food";
-import p5Types from "p5"; //Import this for typechecking and intellisense
+import p5Types from "p5";
+import Spike, {SpikeData} from "./spike"; //Import this for typechecking and intellisense
 
 type StatsUpdate = {
     weight: number,
@@ -54,33 +55,39 @@ type StatsUpdate = {
 export default class Game {
     public players: Player[];
     public foods: Food[];
+    public spikes: Spike[]
     public stats: StatsUpdate[]
     public socket: SocketWrapper;
-    public selfPlayer?: SelfPlayer
+    public selfPlayer: SelfPlayer
     public zoom: number;
     private readonly socketUrl: string;
-    public readonly width: number;
-    public readonly height: number;
+    public width: number;
+    public height: number;
 
-    constructor(width: number, height: number) {
+    constructor(width: number, height: number, data: SelfPlayerData) {
         this.width = width
         this.height = height
         this.players = []
         this.foods = []
         this.stats = []
-        // @ts-ignore
-        this.socketUrl = process.env.REACT_APP_WS_URL
-        console.log('###created socket')
-        this.socket = new SocketWrapper(new WebSocket(this.socketUrl), 1000)
+        this.spikes = []
         this.zoom = 1.0
+        // @ts-ignore
+        this.socketUrl = process.env.REACT_APP_WS_URL + `/${data.uuid}/`
+        this.socket = new SocketWrapper(new WebSocket(this.socketUrl), 1000)
         this.socket.on('moved', data => this.onMoved(data))
+        this.socket.on('playersUpdated', data => this.playersUpdated(data))
+        this.socket.on('foodUpdated', data => this.foodUpdated(data))
+        this.socket.on('spikesUpdated', data => this.spikesUpdated(data))
         this.socket.on('stats', data => this.onStatsUpdate(data))
+        this.selfPlayer = new SelfPlayer(this.socket, data, this.height, this.width)
     }
 
-    playerCreated({uuid, x, y, nickname, weight, speed, color, zoom}: SelfPlayerData) {
-        this.selfPlayer = new SelfPlayer(this.socket, {uuid, x, y, nickname, weight, speed, color, zoom})
-        this.selfPlayer.width = this.width
-        this.selfPlayer.height = this.height
+    windowResized(width: number, height: number) {
+        this.width = width
+        this.height = height
+        this.selfPlayer.width = width
+        this.selfPlayer.height = height
     }
 
     onStatsUpdate(data: StatsUpdate[]) {
@@ -92,32 +99,16 @@ export default class Game {
     }
 
     accelerate() {
-        if (!this.selfPlayer)
-            return
         this.socket.emit('accelerate', {uuid: this.selfPlayer.uuid})
     }
 
-    onMoved(data: { selfPlayer: SelfPlayerData, players: PlayerData[], foods: FoodData[] }) {
-        const selfPlayer = data.selfPlayer
+    playersUpdated(data: PlayerData[]) {
         if (!this.selfPlayer)
             return
-        this.selfPlayer.update(selfPlayer)
-        let cameraX = selfPlayer.x
-        let cameraY = selfPlayer.y;
-        let players = data.players || [];
-        let foods = data.foods || [];
+        let cameraX = this.selfPlayer._x
+        let cameraY = this.selfPlayer._y;
+        let players = data || [];
         this.players = [];
-        this.foods = [];
-        foods.forEach((food: FoodData) => {
-            this.foods.push(new Food({
-                x: food.x,
-                y: food.y,
-                cameraX,
-                cameraY,
-                weight: food.weight,
-                color: food.color
-            }))
-        })
         players.forEach((player: PlayerData) => {
             this.players.push(new Player({
                 x: player.x,
@@ -129,11 +120,53 @@ export default class Game {
                 color: player.color
             }))
         })
+        // console.log(this.players.length, this.foods)
+    }
+
+    spikesUpdated(data: PlayerData[]) {
+        if (!this.selfPlayer)
+            return
+        let cameraX = this.selfPlayer._x
+        let cameraY = this.selfPlayer._y;
+        let spikes = data || [];
+        this.spikes = [];
+        spikes.forEach((spike: SpikeData) => {
+            this.spikes.push(new Spike({
+                x: spike.x,
+                y: spike.y,
+                cameraX,
+                cameraY,
+                weight: spike.weight,
+                color: [0, 255, 0]
+            }))
+        })
+        // console.log(this.players.length, this.foods)
+    }
+
+    foodUpdated(data: FoodData[]) {
+        if (!this.selfPlayer)
+            return
+        let cameraX = this.selfPlayer._x
+        let cameraY = this.selfPlayer._y;
+        let foods = data || [];
+        this.foods = [];
+        foods.forEach((food: FoodData) => {
+            this.foods.push(new Food({
+                x: food.x,
+                y: food.y,
+                cameraX,
+                cameraY,
+                weight: food.weight,
+                color: food.color
+            }))
+        })
+    }
+
+    onMoved(data: MovedEvent) {
+        this.selfPlayer.update(data)
     }
 
     draw(p5: p5Types) {
-        if (!this.selfPlayer)
-            return
         p5.background(240);
         p5.translate(this.width / 2, this.height / 2);
         this.zoom -= 0.1 * (this.zoom - this.selfPlayer.zoom)
@@ -145,14 +178,13 @@ export default class Game {
 
     drawAll(p5: p5Types) {
         this.players.forEach((player: Player) => {
-            // @ts-ignore
-            if (player.uuid === this.selfPlayer.uuid)
-                return
             player.draw(p5)
         })
         this.foods.forEach(food => {
             food.draw(p5)
         })
+        this.spikes.forEach(spike => {
+            spike.draw(p5)
+        })
     }
 }
-

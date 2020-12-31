@@ -4,11 +4,15 @@ import '../App.css'
 export interface Props {
     onClick: (event: any) => void,
     btnClass: string,
-    loading: boolean
+    loading?: boolean
 }
 
 
 export default class ButtonLoading extends React.Component<Props, {}> {
+    static defaultProps = {
+        loading: false
+    }
+
     render() {
         const buttonContent = () => {
             if (this.props.loading)

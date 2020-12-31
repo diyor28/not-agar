@@ -11,8 +11,8 @@ export type EntityData = {
 
 
 export default class Entity {
-    protected _x: number;
-    protected _y: number;
+    _x: number;
+    _y: number;
     public cameraX: number;
     public cameraY: number;
     public weight: number;

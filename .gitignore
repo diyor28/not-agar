@@ -19,6 +19,8 @@ back/.idea
 
 # testing
 /front/coverage
+/front/debug.log
+/front/.eslintcache
 .idea
 
 # production

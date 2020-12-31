@@ -7,3 +7,7 @@ type Food struct {
 	Y      float32 `json:"y"`
 	Weight float32 `json:"weight"`
 }
+
+func (f *Food) getWeight() float32 {
+	return f.Weight
+}

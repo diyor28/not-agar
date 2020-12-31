@@ -6,6 +6,12 @@ const strokeWeight = 8
 const textColor = 255
 
 export type PlayerData = EntityData & { nickname: string }
+export type MovedEvent = {
+    x: number,
+    y: number,
+    zoom: number,
+    weight: number
+}
 
 
 export type SelfPlayerData = {
@@ -14,7 +20,6 @@ export type SelfPlayerData = {
     y: number,
     nickname: string,
     weight: number,
-    speed: number,
     color: number[],
     zoom: number
 }
@@ -42,28 +47,25 @@ export default class Player extends Entity {
 
 export class SelfPlayer extends Player {
     public uuid: string;
-    public speed: number;
     public socket: SocketWrapper;
-    public height: number | undefined;
-    public width: number | undefined;
+    public height: number;
+    public width: number;
     public zoom: number;
 
-    constructor(socket: SocketWrapper, {uuid, x, y, nickname, weight, speed, color, zoom}: SelfPlayerData) {
+    constructor(socket: SocketWrapper, {uuid, x, y, nickname, weight, color, zoom}: SelfPlayerData, height: number, width: number) {
         super({x, y, nickname, cameraX: x, cameraY: y, weight, color});
         this.uuid = uuid;
-        this.speed = speed
         this.socket = socket
         this.zoom = zoom
+        this.height = height
+        this.width = width
     }
 
-    update(data: SelfPlayerData) {
+    update(data: MovedEvent) {
         this._x = data.x;
         this._y = data.y;
         this.weight = data.weight;
-        this.speed = data.speed;
         this.zoom = data.zoom;
-        this.nickname = data.nickname;
-        this.color = data.color;
     }
 
     get x() {
@@ -75,8 +77,6 @@ export class SelfPlayer extends Player {
     }
 
     move(mouseX: number, mouseY: number) {
-        if (!this.width || !this.height)
-            return;
         const newX = this._x + mouseX - this.width / 2
         const newY = this._y + mouseY - this.height / 2
 
