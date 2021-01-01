@@ -88,7 +88,7 @@ var colors = [][3]int{{255, 21, 21}, {255, 243, 21}, {21, 87, 255}, {21, 255, 20
 type GameMap struct {
 	GameId  string
 	Players Players  `json:"players"`
-	Foods   []*Food  `json:"foods"`
+	Foods   Foods    `json:"foods"`
 	Spikes  []*Spike `json:"spikes"`
 	Hub     *sockethub.Hub
 }
@@ -123,7 +123,7 @@ func (gMap *GameMap) handleMoveEvent(data interface{}, client *sockethub.Client)
 	if err := client.Emit("playersUpdated", players); err != nil {
 		log.Println("Socket emit: ", err)
 	}
-	foods := gMap.nearByFood(player, NumFoodResponse)
+	foods := gMap.Foods.closest(player, NumFoodResponse)
 	if err := client.Emit("foodUpdated", foods); err != nil {
 		log.Println("Socket emit: ", err)
 	}
@@ -278,32 +278,6 @@ func (gMap *GameMap) Run() {
 		gMap.removeEatablePlayers()
 		time.Sleep(15 * time.Millisecond)
 	}
-}
-
-func (gMap *GameMap) nearByFood(player *Player, kClosest int) []Food {
-	totalNumFood := len(gMap.Foods)
-	var foods = make([]Food, 0)
-	for _, f := range gMap.Foods {
-		foods = append(foods, *f)
-	}
-	foodDistances := make(map[string]float32, totalNumFood)
-	for _, f := range foods {
-		foodDistances[f.Uuid] = utils.CalcDistance(player.X, f.X, player.Y, f.Y)
-	}
-	numResults := kClosest
-	if kClosest > totalNumFood {
-		numResults = totalNumFood
-	}
-	for i := 0; i < numResults; i++ {
-		var minIdx = i
-		for j := i + 1; j < totalNumFood; j++ {
-			if foodDistances[foods[j].Uuid] < foodDistances[foods[minIdx].Uuid] {
-				minIdx = j
-			}
-		}
-		foods[i], foods[minIdx] = foods[minIdx], foods[i]
-	}
-	return foods[:numResults]
 }
 
 func (gMap *GameMap) nearBySpikes(player *Player, kClosest int) []Spike {

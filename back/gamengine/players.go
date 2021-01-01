@@ -135,8 +135,7 @@ func (pl *Player) setWeight(weight float32) {
 }
 
 func (pl *Player) makeMove(gameMap *GameMap) {
-	//pls := gameMap.closest(gBot.Player)
-	foods := gameMap.nearByFood(pl, 1)
+	foods := gameMap.Foods.closest(pl, 1)
 	closestFood := foods[0]
 	pl.updateDirection(closestFood.X, closestFood.Y)
 }
