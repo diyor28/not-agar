@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Game stats</title>
+    <script src="https://unpkg.com/vue/dist/vue.min.js"></script>
+    <script src="https://unpkg.com/vue-router@2.0.0"></script>
+    <script src="main.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const routes = [
+                {
+                    path: "/",
+                    component: Main,
+                }
+            ];
+            const router = new VueRouter({
+                routes: routes,
+                mode: "hash",
+                base: "/",
+            });
+            new Vue({
+                el: '#app',
+                router
+                // define data - initial display text
+            })
+        })
+    </script>
+</head>
+<body>
+<div id="app">
+    <router-view></router-view>
+</div>
+</body>
+</html>

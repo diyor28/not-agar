@@ -32,7 +32,7 @@ export default class RIP extends React.Component<Props, {}> {
                            <button onClick={this.refreshPage} className="btn btn-primary">Play again</button>
                        }>
                     <div style={{minHeight: "100px", display: "flex", alignItems: "center", justifyContent: "center"}}>
-                        <h3>Haha, looser!</h3>
+                        <h3>What a looser!</h3>
                     </div>
                 </Modal>
             </div>

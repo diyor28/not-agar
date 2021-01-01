@@ -9,13 +9,13 @@ export default class Spike extends Entity {
         p5.fill(this.color)
         p5.strokeWeight(8)
         p5.stroke(lightenDarkenColor(this.color, -20))
+        // p5.ellipse(this.x, this.y, this.weight, this.weight)
         p5.beginShape()
         const points = 50
-        // p5.point(this.x, this.y)
         for (let i = 0; i <= points; i++) {
             let angle = p5.PI * 2 * i / points
-            let rX = this.weight * p5.sin(angle)
-            let rY = this.weight * p5.cos(angle)
+            let rX = this.weight * p5.sin(angle) / 2
+            let rY = this.weight * p5.cos(angle) / 2
             if (i % 2) {
                 rX *= 1.05
                 rY *= 1.05

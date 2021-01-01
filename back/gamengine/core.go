@@ -1,8 +1,6 @@
 package gamengine
 
 import (
-	"errors"
-	"fmt"
 	"github.com/diyor28/not-agar/randomname"
 	"github.com/diyor28/not-agar/sockethub"
 	"github.com/diyor28/not-agar/utils"
@@ -18,22 +16,23 @@ import (
 const (
 	MinXY              = 0
 	MaxXY              = 5000
-	surfaceArea        = MaxXY * MaxXY
+	SurfaceArea        = MaxXY * MaxXY
 	FoodWeight         = 25
-	SpikeWeight        = 80
+	SpikeWeight        = 120
 	MinSpeed           = 2
 	MaxSpeed           = 8
-	MaxNumFood         = surfaceArea / 50000
+	MaxNumFood         = SurfaceArea / 50000
 	MinWeight          = 40
-	MaxWeight          = MinWeight * 15
-	MinZoom            = 0.8
+	MaxWeight          = MinWeight * 25
+	MinZoom            = 0.7
 	MaxZoom            = 1.0
-	maxPlayers         = 20
-	MaxSpikes          = maxPlayers
+	MaxPlayers         = 20
+	MaxSpikes          = MaxPlayers * 5
 	StatsNumber        = 10
-	SpeedWeightLimit   = 300
+	SpeedWeightLimit   = 500
 	NumFoodResponse    = 30
 	NumPlayersResponse = 10
+	SpikesSpacing      = MaxXY / MaxSpikes
 )
 
 type MoveEvent struct {
@@ -53,17 +52,29 @@ type MovedEvent struct {
 	Zoom   float32 `json:"zoom"`
 }
 
-func getRandomColor() [3]int {
+func randomColor() [3]int {
 	return colors[rand.Intn(len(colors))]
 }
 
-func getRandomCoordinate() (float32, float32) {
-	return float32(rand.Intn(MaxXY)), float32(rand.Intn(MaxXY))
+func randXYNoOverlap(data interface{}, minDistance float32) (float32, float32) {
+	x, y := randXY()
+	entities := data.([]interface {
+		getWeight() float32
+		getXY() (float32, float32)
+	})
+	for _, entity := range entities {
+		radius := entity.getWeight() / 2
+		eX, eY := entity.getXY()
+		dist := utils.CalcDistance(eX, x, eY, y)
+		if dist-radius < minDistance {
+			return randXYNoOverlap(data, minDistance)
+		}
+	}
+	return x, y
 }
 
-func newWeight(weight1 float32, weight2 float32) float32 {
-	nWeight := math.Sqrt(float64(weight1*weight1 + weight2*weight2))
-	return float32(math.Min(nWeight, MaxWeight))
+func randXY() (float32, float32) {
+	return float32(rand.Intn(MaxXY)), float32(rand.Intn(MaxXY))
 }
 
 func getSpeedFromWeight(weight float32) float32 {
@@ -76,9 +87,9 @@ var colors = [][3]int{{255, 21, 21}, {255, 243, 21}, {21, 87, 255}, {21, 255, 20
 
 type GameMap struct {
 	GameId  string
-	Players []*Player `json:"players"`
-	Foods   []*Food   `json:"foods"`
-	Spikes  []*Spike  `json:"spikes"`
+	Players Players  `json:"players"`
+	Foods   []*Food  `json:"foods"`
+	Spikes  []*Spike `json:"spikes"`
 	Hub     *sockethub.Hub
 }
 
@@ -100,7 +111,7 @@ func (gMap *GameMap) handleMoveEvent(data interface{}, client *sockethub.Client)
 		log.Println(err)
 		return
 	}
-	player, err := gMap.UpdatePlayer(moveData.Uuid, moveData.NewX, moveData.NewY)
+	player, err := gMap.Players.update(moveData.Uuid, moveData.NewX, moveData.NewY)
 	if err != nil {
 		log.Println(err, moveData.Uuid)
 		return
@@ -108,7 +119,7 @@ func (gMap *GameMap) handleMoveEvent(data interface{}, client *sockethub.Client)
 	if err := client.Emit("moved", MovedEvent{player.X, player.Y, player.Weight, player.Zoom}); err != nil {
 		log.Println("Socket emit", err)
 	}
-	players := gMap.nearByPlayers(player, NumPlayersResponse)
+	players := gMap.Players.closest(player, NumPlayersResponse)
 	if err := client.Emit("playersUpdated", players); err != nil {
 		log.Println("Socket emit: ", err)
 	}
@@ -136,7 +147,7 @@ func (gMap *GameMap) handleAccelerate(data interface{}, client *sockethub.Client
 		log.Println(err)
 		return
 	}
-	player, err := gMap.GetPlayer(accelerateData.Uuid)
+	player, err := gMap.Players.get(accelerateData.Uuid)
 	if err != nil {
 		log.Println("could not find player ", err)
 		return
@@ -152,15 +163,20 @@ func (gMap *GameMap) sendPong(data interface{}, client *sockethub.Client) {
 	}
 }
 
-func (gMap *GameMap) populateBots() {
-	//maxBots := (maxPlayers - len(gMap.Players)) / 2
-	maxBots := 0
+func (gMap *GameMap) getBotsCount() int {
 	currentBots := 0
 	for _, player := range gMap.Players {
 		if player.IsBot {
 			currentBots++
 		}
 	}
+	return currentBots
+}
+
+func (gMap *GameMap) populateBots() {
+	maxBots := (MaxPlayers - len(gMap.Players)) / 2
+	//maxBots := 0
+	currentBots := gMap.getBotsCount()
 	if currentBots < maxBots {
 		for i := 0; i < maxBots; i++ {
 			gMap.CreatePlayer(randomname.GenerateNickname(), true)
@@ -170,14 +186,14 @@ func (gMap *GameMap) populateBots() {
 
 func (gMap *GameMap) populateSpikes() {
 	for i := 0; i < MaxSpikes; i++ {
-		x, y := getRandomCoordinate()
-		spike := Spike{
-			Uuid:   uuid4.New().String(),
-			Weight: SpikeWeight,
-			X:      x,
-			Y:      y,
+		var spikes []Spike
+		for _, s := range gMap.Spikes {
+			spikes = append(spikes, *s)
 		}
-		gMap.Spikes = append(gMap.Spikes, &spike)
+		//x, y := randXYNoOverlap(spikes, SpikesSpacing)
+		x, y := randXY()
+		spike := NewSpike(x, y, SpikeWeight)
+		gMap.Spikes = append(gMap.Spikes, spike)
 	}
 }
 
@@ -190,8 +206,8 @@ func (gMap *GameMap) populateFood() {
 	for _, f := range gMap.Foods {
 		totalWeight += f.Weight * f.Weight * math.Pi
 	}
-	//density := int(20 * totalWeight / surfaceArea)
-	//fmt.Println("DENSITY", 20 * totalWeight / surfaceArea)
+	//density := int(20 * totalWeight / SurfaceArea)
+	//fmt.Println("DENSITY", 20 * totalWeight / SurfaceArea)
 	//maxFood -= density
 	if len(gMap.Foods) < maxFood {
 		for i := 0; i < maxFood-len(gMap.Foods); i++ {
@@ -204,7 +220,30 @@ func (gMap *GameMap) publishStats() {
 	for {
 		time.Sleep(2 * time.Second)
 		stats := gMap.GetStats()
-		gMap.Hub.Publish("stats", stats)
+		gMap.notifyAllPlayers("stats", stats)
+	}
+}
+
+func (gMap *GameMap) notifyAllPlayers(event string, data interface{}) {
+	for _, p := range gMap.Players {
+		if p.IsBot {
+			continue
+		}
+		gMap.Hub.Emit(event, data, p.Uuid)
+	}
+}
+
+func (gMap *GameMap) publishAdminStats() {
+	for {
+		var result = make(map[string]interface{})
+		botsCount := gMap.getBotsCount()
+		stats := gMap.GetStats()
+
+		result["botsCount"] = botsCount
+		result["playersCount"] = len(gMap.Players) - botsCount
+		result["topPlayers"] = stats
+		gMap.Hub.Emit("stats", result, "admin")
+		time.Sleep(2 * time.Second)
 	}
 }
 
@@ -213,6 +252,7 @@ func (gMap *GameMap) Run() {
 	go gMap.publishStats()
 	go gMap.Hub.Run()
 	go gMap.populateSpikes()
+	go gMap.publishAdminStats()
 	for {
 		counter++
 		var wg sync.WaitGroup
@@ -292,30 +332,14 @@ func (gMap *GameMap) nearBySpikes(player *Player, kClosest int) []Spike {
 	return spikes[:numResults]
 }
 
-type StatsResponse struct {
-	Nickname string `json:"nickname"`
-	Weight   int    `json:"weight"`
-}
-
-func (gMap GameMap) GetStats() []StatsResponse {
-	players := gMap.Players
-	numOfPlayers := len(players)
-	playersInStats := StatsNumber
-	if numOfPlayers < StatsNumber {
-		playersInStats = numOfPlayers
-	}
-	var topPlayers []StatsResponse
-	for i := 0; i < playersInStats; i++ {
-		var maxIdx = i
-		for j := i; j < numOfPlayers; j++ {
-			if players[j].Weight > players[maxIdx].Weight {
-				maxIdx = j
-			}
-		}
-		players[i], players[maxIdx] = players[maxIdx], players[i]
-	}
-	for i := 0; i < playersInStats; i++ {
-		topPlayers = append(topPlayers, StatsResponse{players[i].Nickname, int(players[i].Weight)})
+func (gMap GameMap) GetStats() []map[string]interface{} {
+	players := gMap.Players.largest(StatsNumber)
+	var topPlayers []map[string]interface{}
+	for i := 0; i < len(players); i++ {
+		stat := map[string]interface{}{}
+		stat["nickname"] = players[i].Nickname
+		stat["weight"] = players[i].Weight
+		topPlayers = append(topPlayers, stat)
 	}
 	return topPlayers
 }
@@ -328,30 +352,6 @@ func (gMap *GameMap) playersExcept(uuid string) []Player {
 		}
 	}
 	return players
-}
-
-func (gMap *GameMap) nearByPlayers(player *Player, kClosest int) []Player {
-	players := gMap.playersExcept(player.Uuid)
-	totalPlayers := len(players)
-	playersDistances := make(map[string]float32, totalPlayers)
-	for _, p := range players {
-		playersDistances[p.Uuid] = utils.CalcDistance(player.X, p.X, player.Y, p.Y)
-	}
-
-	numResults := kClosest
-	if kClosest > totalPlayers {
-		numResults = totalPlayers
-	}
-	for i := 0; i < numResults; i++ {
-		var minIdx = i
-		for j := i + 1; j < totalPlayers; j++ {
-			if playersDistances[players[j].Uuid] < playersDistances[players[minIdx].Uuid] {
-				minIdx = j
-			}
-		}
-		players[i], players[minIdx] = players[minIdx], players[i]
-	}
-	return players[:numResults]
 }
 
 func (gMap *GameMap) removePlayerIndex(index int) {
@@ -377,60 +377,25 @@ func (gMap *GameMap) RemovePlayerUUID(uuid string) {
 	}
 }
 
-func (gMap *GameMap) createFood(x float32, y float32) Food {
-	food := Food{
-		Uuid:   uuid4.New().String(),
-		X:      x,
-		Y:      y,
-		Color:  getRandomColor(),
-		Weight: FoodWeight,
-	}
-	gMap.Foods = append(gMap.Foods, &food)
+func (gMap *GameMap) createFood(x float32, y float32) *Food {
+	food := NewFood(x, y, FoodWeight)
+	gMap.Foods = append(gMap.Foods, food)
 	return food
 }
 
-func (gMap *GameMap) createRandomFood() Food {
-	x, y := getRandomCoordinate()
+func (gMap *GameMap) createRandomFood() *Food {
+	x, y := randXY()
 	return gMap.createFood(x, y)
 }
 
-func (gMap *GameMap) GetPlayer(uuid string) (*Player, error) {
-	for i := range gMap.Players {
-		if gMap.Players[i].Uuid == uuid {
-			return gMap.Players[i], nil
-		}
-	}
-	return nil, errors.New("no player found")
-}
-
 func (gMap *GameMap) CreatePlayer(nickname string, isBot bool) SelfPlayer {
-	x, y := getRandomCoordinate()
-	player := Player{
-		Uuid:         uuid4.New().String(),
-		X:            x,
-		Y:            y,
-		Color:        getRandomColor(),
-		Weight:       MinWeight,
-		Accelerating: false,
-		Speed:        MaxSpeed,
-		Zoom:         1,
-		Nickname:     nickname,
-		IsBot:        isBot,
-	}
-	if len(gMap.Players) >= maxPlayers {
+	x, y := randXY()
+	player := NewPlayer(x, y, MinWeight, nickname, isBot)
+	if len(gMap.Players) >= MaxPlayers {
 		gMap.removePlayerIndex(0)
 	}
-	gMap.Players = append(gMap.Players, &player)
+	gMap.Players = append(gMap.Players, player)
 	return player.getSelfPlayer()
-}
-
-func (gMap *GameMap) UpdatePlayer(uuid string, newX float32, newY float32) (*Player, error) {
-	player, err := gMap.GetPlayer(uuid)
-	if err != nil {
-		return nil, err
-	}
-	player.updateDirection(newX, newY)
-	return player, nil
 }
 
 func (gMap *GameMap) removeEatableFood() {
@@ -468,7 +433,6 @@ func (gMap *GameMap) removeEatablePlayers() {
 
 	for i := 0; i < totalPlayers; i++ {
 		p1 := gMap.Players[i]
-		fmt.Println("spikeCollisions", p1)
 		if gMap.spikeCollisions(p1) {
 			willBeEaten[i] = true
 		}

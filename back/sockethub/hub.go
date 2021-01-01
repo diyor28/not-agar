@@ -77,7 +77,8 @@ func (h *Hub) CloseChannel(roomId string) {
 func (h *Hub) Emit(event string, data interface{}, roomId string) {
 	var validConnections []*Client
 	for _, conn := range h.connections {
-		if roomId == "" || conn.roomId == roomId {
+		//fmt.Println("channel", conn.roomId, roomId)
+		if conn.roomId == roomId {
 			if err := conn.Emit(event, data); err != nil {
 				log.Println(err)
 			} else {
@@ -86,8 +87,4 @@ func (h *Hub) Emit(event string, data interface{}, roomId string) {
 		}
 	}
 	h.connections = validConnections
-}
-
-func (h *Hub) Publish(event string, data interface{}) {
-	h.Emit(event, data, "")
 }

@@ -1,13 +1,24 @@
 package gamengine
 
+import (
+	"github.com/diyor28/not-agar/src/github.com/frankenbeanies/uuid4"
+)
+
 type Food struct {
-	Uuid   string  `json:"-"`
-	Color  [3]int  `json:"color"`
-	X      float32 `json:"x"`
-	Y      float32 `json:"y"`
-	Weight float32 `json:"weight"`
+	*Entity
+	Color [3]int `json:"color"`
 }
 
-func (f *Food) getWeight() float32 {
-	return f.Weight
+func NewFood(x float32, y float32, weight float32) *Food {
+	food := &Food{
+		Entity: &Entity{
+			Uuid: uuid4.New().String(),
+			X:    x,
+			Y:    y,
+		},
+		Color: randomColor(),
+	}
+	food.setWeight(weight)
+	return food
 }
+
