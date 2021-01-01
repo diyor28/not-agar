@@ -13,13 +13,13 @@ type Food struct {
 func NewFood(x float32, y float32, weight float32) *Food {
 	food := &Food{
 		Entity: &Entity{
-			Uuid: uuid4.New().String(),
-			X:    x,
-			Y:    y,
+			Uuid:   uuid4.New().String(),
+			X:      x,
+			Y:      y,
+			Weight: weight,
 		},
 		Color: randomColor(),
 	}
-	food.setWeight(weight)
 	return food
 }
 

@@ -220,3 +220,33 @@ func (players Players) update(uuid string, newX float32, newY float32) (*Player,
 	player.updateDirection(newX, newY)
 	return player, nil
 }
+
+func (players Players) real() Players {
+	var result Players
+	for _, p := range players {
+		if !p.IsBot {
+			result = append(result, p)
+		}
+	}
+	return result
+}
+
+func (players Players) bots() Players {
+	var result Players
+	for _, p := range players {
+		if p.IsBot {
+			result = append(result, p)
+		}
+	}
+	return result
+}
+
+func (players Players) botsCount() int {
+	count := 0
+	for _, player := range players {
+		if player.IsBot {
+			count++
+		}
+	}
+	return count
+}
