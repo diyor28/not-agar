@@ -1,8 +1,8 @@
 package gamengine
 
 import (
-	"github.com/diyor28/not-agar/src/github.com/frankenbeanies/uuid4"
 	"github.com/diyor28/not-agar/utils"
+	"github.com/frankenbeanies/uuid4"
 )
 
 type Food struct {
