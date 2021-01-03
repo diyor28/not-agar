@@ -3,12 +3,14 @@ import Sketch from 'react-p5';
 import Game from "./gameUtils/GameEngine";
 import CreatePlayerModal from "./components/CreatePlayerModal";
 import {SelfPlayerData} from "./gameUtils/player";
+import {SpikeData} from "./gameUtils/spike";
 import Stats from "./Stats";
 import Ping from "./Ping";
 import RIP from "./RIP";
 
 let height = window.innerHeight - 10;
 let width = window.innerWidth - 10;
+const frameRate = 40
 
 class App extends React.Component {
     game?: Game
@@ -19,8 +21,9 @@ class App extends React.Component {
         ping: null
     };
 
-    onCreated = (data: SelfPlayerData) => {
-        let game = new Game(width, height, data)
+    onCreated = (data: { player: SelfPlayerData, spikes: SpikeData[] }) => {
+        let game = new Game(width, height, data.player)
+        game.spikesCreated(data.spikes)
         game.socket.on('stats', data => {
             if (!data)
                 return
@@ -59,6 +62,7 @@ class App extends React.Component {
                 <Sketch
                     setup={(p5, parentRef) => {
                         p5.createCanvas(width, height).parent(parentRef);
+                        p5.frameRate(frameRate);
                     }}
                     draw={p5 => {
                         if (!this.game)

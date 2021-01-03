@@ -78,7 +78,6 @@ export default class Game {
         this.socket.on('moved', data => this.onMoved(data))
         this.socket.on('playersUpdated', data => this.playersUpdated(data))
         this.socket.on('foodUpdated', data => this.foodUpdated(data))
-        this.socket.on('spikesUpdated', data => this.spikesUpdated(data))
         this.socket.on('stats', data => this.onStatsUpdate(data))
         this.selfPlayer = new SelfPlayer(this.socket, data, this.height, this.width)
     }
@@ -103,8 +102,6 @@ export default class Game {
     }
 
     playersUpdated(data: PlayerData[]) {
-        if (!this.selfPlayer)
-            return
         let cameraX = this.selfPlayer._x
         let cameraY = this.selfPlayer._y;
         let players = data || [];
@@ -123,9 +120,7 @@ export default class Game {
         // console.log(this.players.length, this.foods)
     }
 
-    spikesUpdated(data: PlayerData[]) {
-        if (!this.selfPlayer)
-            return
+    spikesCreated(data: SpikeData[]) {
         let cameraX = this.selfPlayer._x
         let cameraY = this.selfPlayer._y;
         let spikes = data || [];
@@ -144,8 +139,6 @@ export default class Game {
     }
 
     foodUpdated(data: FoodData[]) {
-        if (!this.selfPlayer)
-            return
         let cameraX = this.selfPlayer._x
         let cameraY = this.selfPlayer._y;
         let foods = data || [];
@@ -164,6 +157,10 @@ export default class Game {
 
     onMoved(data: MovedEvent) {
         this.selfPlayer.update(data)
+        this.spikes.forEach(spike => {
+            spike.cameraX = data.x
+            spike.cameraY = data.y
+        })
     }
 
     draw(p5: p5Types) {

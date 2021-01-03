@@ -31,7 +31,7 @@ const (
 	SpeedWeightLimit   = 500
 	NumFoodResponse    = 30
 	NumPlayersResponse = 10
-	SpikesSpacing      = MaxXY / MaxSpikes + SpikeWeight
+	SpikesSpacing      = MaxXY/MaxSpikes + SpikeWeight
 )
 
 type MoveEvent struct {
@@ -109,12 +109,6 @@ func (gMap *GameMap) handleMoveEvent(data interface{}, client *sockethub.Client)
 	if err := client.Emit("foodUpdated", foods); err != nil {
 		log.Println("Socket emit: ", err)
 	}
-
-	spikes := gMap.Spikes.closest(player, NumFoodResponse)
-	if err := client.Emit("spikesUpdated", spikes); err != nil {
-		log.Println("Socket emit: ", err)
-	}
-
 	//binaryBuffer := make([]byte, 256)
 	//binary.BigEndian.PutUint16(binaryBuffer, )
 	//
@@ -261,16 +255,6 @@ func (gMap GameMap) GetStats() []map[string]interface{} {
 	return topPlayers
 }
 
-func (gMap *GameMap) playersExcept(uuid string) []Player {
-	var players = make([]Player, 0)
-	for _, p := range gMap.Players {
-		if p.Uuid != uuid {
-			players = append(players, *p)
-		}
-	}
-	return players
-}
-
 func (gMap *GameMap) removePlayerIndex(index int) {
 	gMap.Players = append(gMap.Players[:index], gMap.Players[index+1:]...)
 }
@@ -305,14 +289,17 @@ func (gMap *GameMap) createRandomFood() *Food {
 	return gMap.createFood(x, y)
 }
 
-func (gMap *GameMap) CreatePlayer(nickname string, isBot bool) SelfPlayer {
+func (gMap *GameMap) CreatePlayer(nickname string, isBot bool) map[string]interface{} {
 	x, y := randXY()
 	player := NewPlayer(x, y, MinWeight, nickname, isBot)
 	if len(gMap.Players) >= MaxPlayers {
 		gMap.removePlayerIndex(0)
 	}
 	gMap.Players = append(gMap.Players, player)
-	return player.getSelfPlayer()
+	var result = make(map[string]interface{})
+	result["player"] = player.getSelfPlayer()
+	result["spikes"] = gMap.Spikes
+	return result
 }
 
 func (gMap *GameMap) removeEatableFood() {

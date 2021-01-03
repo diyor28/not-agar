@@ -62,5 +62,6 @@ func main() {
 	router.HandleFunc("/player-ws/{uuid}/", playerWS)
 	router.HandleFunc("/admin", adminWS)
 	router.PathPrefix("/").Handler(http.FileServer(http.Dir("./static")))
-	log.Fatal(http.ListenAndServe(":3100", router))
+	err := http.ListenAndServe(":3100", router)
+	log.Fatal(err)
 }
