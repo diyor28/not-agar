@@ -42,12 +42,13 @@
 //     }
 // }
 import Player, {MovedEvent, PlayerData, SelfPlayer, SelfPlayerData} from "./player";
-import {SocketWrapper} from "./utils";
+import {isMobile, SocketWrapper} from "./utils";
 import Food, {FoodData} from "./food";
 import p5Types from "p5";
 import Spike, {SpikeData} from "./spike"; //Import this for typechecking and intellisense
+import JoyStick from "./joystick";
 
-type StatsUpdate = {
+export type StatsUpdate = {
     weight: number,
     nickname: string
 }
@@ -59,10 +60,11 @@ export default class Game {
     public stats: StatsUpdate[]
     public socket: SocketWrapper;
     public selfPlayer: SelfPlayer
-    public zoom: number;
+    public _zoom: number;
     private readonly socketUrl: string;
     public width: number;
     public height: number;
+    public joystick: JoyStick
 
     constructor(width: number, height: number, data: SelfPlayerData) {
         this.width = width
@@ -71,7 +73,7 @@ export default class Game {
         this.foods = []
         this.stats = []
         this.spikes = []
-        this.zoom = 1.0
+        this._zoom = 1.0
         // @ts-ignore
         this.socketUrl = process.env.REACT_APP_WS_URL + `/${data.uuid}/`
         this.socket = new SocketWrapper(new WebSocket(this.socketUrl), 1000)
@@ -80,6 +82,11 @@ export default class Game {
         this.socket.on('foodUpdated', data => this.foodUpdated(data))
         this.socket.on('stats', data => this.onStatsUpdate(data))
         this.selfPlayer = new SelfPlayer(this.socket, data, this.height, this.width)
+        this.joystick = new JoyStick(width, height)
+    }
+
+    get isMobile() {
+        return isMobile()
     }
 
     windowResized(width: number, height: number) {
@@ -87,6 +94,8 @@ export default class Game {
         this.height = height
         this.selfPlayer.width = width
         this.selfPlayer.height = height
+        this.joystick.width = width
+        this.joystick.height = height
     }
 
     onStatsUpdate(data: StatsUpdate[]) {
@@ -163,14 +172,52 @@ export default class Game {
         })
     }
 
+    get zoom() {
+        if (this.isMobile)
+            return this._zoom * 0.8
+        return this._zoom
+    }
+
+    updateZoom() {
+        this._zoom -= 0.1 * (this._zoom - this.selfPlayer.zoom)
+    }
+
     draw(p5: p5Types) {
+        this.updateZoom()
         p5.background(240);
         p5.translate(this.width / 2, this.height / 2);
-        this.zoom -= 0.1 * (this.zoom - this.selfPlayer.zoom)
         p5.scale(this.zoom);
-        this.selfPlayer.move(p5.mouseX, p5.mouseY)
         this.selfPlayer.draw(p5)
         this.drawAll(p5)
+        if (this.isMobile)
+            this.joystick.draw(p5)
+    }
+
+    touchStarted(p5: p5Types) {
+        this.joystick.touchStarted(p5.mouseX, p5.mouseY)
+    }
+
+    touchMoved(p5: p5Types) {
+        const {newX, newY} = this.joystick.move(p5.mouseX, p5.mouseY)
+        this.emitMove(newX, newY)
+    }
+
+    emitMove(newX: number, newY: number) {
+        const data = {
+            uuid: this.selfPlayer.uuid,
+            newX: this.selfPlayer._x + newX,
+            newY: this.selfPlayer._y + newY
+        }
+        this.socket.emit('move', data)
+    }
+
+    touchEnded(p5: p5Types) {
+        this.joystick.touchEnded()
+    }
+
+    mouseMoved(mouseX: number, mouseY: number) {
+        const {newX, newY} = this.selfPlayer.move(mouseX, mouseY)
+        this.emitMove(newX, newY)
     }
 
     drawAll(p5: p5Types) {

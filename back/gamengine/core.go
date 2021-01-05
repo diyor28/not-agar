@@ -16,10 +16,10 @@ const (
 	MinXY              = 0
 	MaxXY              = 5000
 	SurfaceArea        = MaxXY * MaxXY
-	FoodWeight         = 25
+	FoodWeight         = 20
 	SpikeWeight        = 120
 	MinSpeed           = 2
-	MaxSpeed           = 8
+	MaxSpeed           = 5
 	MaxNumFood         = SurfaceArea / 50000
 	MinWeight          = 40
 	MaxWeight          = MinWeight * 25
@@ -87,37 +87,28 @@ func NewGameMap() *GameMap {
 	return &gameMap
 }
 
-func (gMap *GameMap) handleMoveEvent(data interface{}, client *sockethub.Client) {
+func (gMap *GameMap) handleMoveEvent(data interface{}, playerId string) {
 	var moveData MoveEvent
 	if err := mapstructure.Decode(data, &moveData); err != nil {
 		log.Println(err)
 		return
 	}
-	player, err := gMap.Players.update(moveData.Uuid, moveData.NewX, moveData.NewY)
+	player, err := gMap.Players.update(playerId, moveData.NewX, moveData.NewY)
 	if err != nil {
 		log.Println(err, moveData.Uuid)
 		return
 	}
-	if err := client.Emit("moved", MovedEvent{player.X, player.Y, player.Weight, player.Zoom}); err != nil {
-		log.Println("Socket emit", err)
-	}
-	players := gMap.Players.closest(player, NumPlayersResponse)
-	if err := client.Emit("playersUpdated", players); err != nil {
-		log.Println("Socket emit: ", err)
-	}
-	foods := gMap.Foods.closest(player, NumFoodResponse)
-	if err := client.Emit("foodUpdated", foods); err != nil {
-		log.Println("Socket emit: ", err)
-	}
+	gMap.Hub.Emit("moved", MovedEvent{player.X, player.Y, player.Weight, player.Zoom}, player.Uuid)
+
 	//binaryBuffer := make([]byte, 256)
 	//binary.BigEndian.PutUint16(binaryBuffer, )
 	//
 	//if err := client.Emit("foodUpdatedB", foods); err != nil {
-	//	log.Println("Socket emit: ", err)
+	//	log.Println("socket emit: ", err)
 	//}
 }
 
-func (gMap *GameMap) handleAccelerate(data interface{}, client *sockethub.Client) {
+func (gMap *GameMap) handleAccelerate(data interface{}, playerId string) {
 	var accelerateData AccelerateEvent
 	if err := mapstructure.Decode(data, &accelerateData); err != nil {
 		log.Println(err)
@@ -133,10 +124,8 @@ func (gMap *GameMap) handleAccelerate(data interface{}, client *sockethub.Client
 	}
 }
 
-func (gMap *GameMap) sendPong(data interface{}, client *sockethub.Client) {
-	if err := client.Emit("pong", data); err != nil {
-		log.Println(err)
-	}
+func (gMap *GameMap) sendPong(data interface{}, playerId string) {
+	gMap.Hub.Emit("pong", data, playerId)
 }
 
 func (gMap *GameMap) populateBots() {
@@ -210,6 +199,14 @@ func (gMap *GameMap) publishAdminStats() {
 	}
 }
 
+func (gMap *GameMap) notifyPlayer(player *Player) {
+	gMap.Hub.Emit("moved", MovedEvent{player.X, player.Y, player.Weight, player.Zoom}, player.Uuid)
+	players := gMap.Players.closest(player, NumPlayersResponse)
+	gMap.Hub.Emit("playersUpdated", players, player.Uuid)
+	foods := gMap.Foods.closest(player, NumFoodResponse)
+	gMap.Hub.Emit("foodUpdated", foods, player.Uuid)
+}
+
 func (gMap *GameMap) Run() {
 	counter := 0
 	go gMap.publishStats()
@@ -234,12 +231,19 @@ func (gMap *GameMap) Run() {
 				}
 				player.updatePosition(gMap)
 				player.passiveWeightLoss()
+				if player.IsBot {
+					return
+				}
+				if counter%2 == 0 {
+					gMap.notifyPlayer(player)
+				}
 			}(i)
 		}
 		wg.Wait()
 		gMap.removeEatableFood()
 		gMap.removeEatablePlayers()
 		time.Sleep(15 * time.Millisecond)
+		//fmt.Println("running loop")
 	}
 }
 

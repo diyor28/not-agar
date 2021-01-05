@@ -1,6 +1,6 @@
 import React from 'react';
-import "./components/modal.css";
-import './App.css'
+import "../../components/modal.css";
+import '../../App.css'
 
 export interface Props {
     ping: number | null

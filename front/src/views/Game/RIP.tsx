@@ -1,6 +1,5 @@
 import React from 'react';
-import Modal from './components/Modal'
-import './App.css'
+import Modal from '../../components/Modal'
 
 export interface Props {
     show: boolean,

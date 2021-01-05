@@ -77,14 +77,8 @@ export class SelfPlayer extends Player {
     }
 
     move(mouseX: number, mouseY: number) {
-        const newX = this._x + mouseX - this.width / 2
-        const newY = this._y + mouseY - this.height / 2
-
-        const data = {
-            uuid: this.uuid,
-            newX: newX,
-            newY: newY
-        }
-        this.socket.emit('move', data)
+        const newX = mouseX - this.width / 2
+        const newY = mouseY - this.height / 2
+        return {newX, newY}
     }
 }

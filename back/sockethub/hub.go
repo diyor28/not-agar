@@ -2,89 +2,95 @@ package sockethub
 
 import (
 	"github.com/gorilla/websocket"
-	"log"
-	"sync"
 )
 
-type ServerResponse struct {
+type Message struct {
 	Event string      `json:"event"`
 	Data  interface{} `json:"data"`
 }
 
-type ServerRequest struct {
-	Event string      `json:"Event"` // move
-	Data  interface{} `json:"Data"`
+type BroadcastMessage struct {
+	Message
+	roomId string
 }
 
 type EventHandler struct {
 	Event    string
-	Callback func(data interface{}, client *Client)
+	Callback func(data interface{}, roomId string)
 }
 
 type Hub struct {
 	connections   []*Client
 	eventHandlers []EventHandler
+	// Registered clients.
+	clients map[*Client]bool
+
+	// Inbound messages from the clients.
+	broadcast  chan BroadcastMessage
+	readBuffer chan BroadcastMessage
+
+	// Register requests from the clients.
+	register chan *Client
+
+	// Unregister requests from clients.
+	unregister chan *Client
 }
 
 func NewHub() *Hub {
-	h := Hub{}
+	h := Hub{
+		readBuffer: make(chan BroadcastMessage),
+		broadcast:  make(chan BroadcastMessage),
+		register:   make(chan *Client),
+		unregister: make(chan *Client),
+		clients:    make(map[*Client]bool),
+	}
 	return &h
 }
 
 func (h *Hub) Run() {
 	for {
-		var validConnections []*Client
-		var wg sync.WaitGroup
-		for _, conn := range h.connections {
-			wg.Add(1)
-			go func(client *Client) {
-				defer wg.Done()
-				request, err := client.ReadJSON()
-				if err != nil {
-					log.Println(err)
-				} else {
-					validConnections = append(validConnections, client)
+		select {
+		case client := <-h.register:
+			h.clients[client] = true
+		case client := <-h.unregister:
+			if _, ok := h.clients[client]; ok {
+				delete(h.clients, client)
+				close(client.send)
+			}
+		case message := <-h.broadcast:
+			//fmt.Println("emitting event", message.Event, len(h.clients))
+			for client := range h.clients {
+				if client.roomId != message.roomId {
+					continue
 				}
-				h.receivedEvent(request, client)
-			}(conn)
+				client.send <- message.Message
+			}
+		case message := <-h.readBuffer:
+			//fmt.Println("received event", message.Event)
+			go h.receivedEvent(message)
 		}
-		wg.Wait()
-		h.connections = validConnections
 	}
 }
 
 func (h *Hub) AddConnection(ws *websocket.Conn, roomId string) {
-	conn := &Client{roomId, ws, &sync.Mutex{}}
-	h.connections = append(h.connections, conn)
+	client := &Client{roomId: roomId, socket: ws, send: make(chan Message), hub: h}
+	go client.reader()
+	go client.writer()
+	h.register <- client
 }
 
-func (h *Hub) receivedEvent(request ServerRequest, client *Client) {
+func (h *Hub) receivedEvent(message BroadcastMessage) {
 	for _, event := range h.eventHandlers {
-		if event.Event == request.Event {
-			event.Callback(request.Data, client)
+		if event.Event == message.Event {
+			event.Callback(message.Data, message.roomId)
 		}
 	}
 }
 
-func (h *Hub) On(event string, callback func(data interface{}, client *Client)) {
+func (h *Hub) On(event string, callback func(data interface{}, roomId string)) {
 	h.eventHandlers = append(h.eventHandlers, EventHandler{event, callback})
 }
 
-func (h *Hub) CloseChannel(roomId string) {
-
-}
-
 func (h *Hub) Emit(event string, data interface{}, roomId string) {
-	var validConnections []*Client
-	for _, conn := range h.connections {
-		//fmt.Println("channel", conn.roomId, roomId)
-		if conn.roomId == roomId {
-			if err := conn.Emit(event, data); err != nil {
-				log.Println(err)
-			} else {
-				validConnections = append(validConnections, conn)
-			}
-		}
-	}
-	h.connections = validConnections
+	h.broadcast <- BroadcastMessage{Message{event, data}, roomId}
 }

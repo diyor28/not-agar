@@ -1,8 +1,7 @@
 import React, {FormEvent} from 'react';
-import Modal from './Modal'
+import Modal from '../../components/Modal'
 import axios from 'axios'
-import '../App.css'
-import ButtonLoading from './ButtonLoading'
+import ButtonLoading from '../../components/ButtonLoading'
 
 export interface Props {
     onCreated: Function,
@@ -45,11 +44,13 @@ export default class CreatePlayerModal extends React.Component<Props, {}> {
                                Play
                            </ButtonLoading>
                        }>
-                    <form onSubmit={this.createPlayer}>
-                        <input className={'my-5'} placeholder={'Your nickname'} type="text" value={this.state.nickname}
+                    <form className={'my-5'} onSubmit={this.createPlayer}>
+                        <input autoFocus={true} placeholder={'Your nickname'} type="text" value={this.state.nickname}
                                onChange={this.handleChange}/>
                     </form>
-                    Tip: Press <kbd>a</kbd> to accelerate
+                    <div style={{marginBottom: "10px"}}>
+                        Tip: Press <kbd>a</kbd> to accelerate
+                    </div>
                 </Modal>
             </div>
         );
