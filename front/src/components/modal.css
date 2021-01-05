@@ -14,14 +14,24 @@ body {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    background: white;
     border: 1px solid #ccc;
     transition: 1.1s ease-out;
+    background: white;
     box-shadow: -2rem 2rem 2rem rgba(0, 0, 0, 0.2);
     filter: blur(0);
     opacity: 1;
     position: absolute;
     visibility: visible;
+}
+
+.modal-transparent {
+    background: none;
+    box-shadow: none;
+    border: none;
+}
+
+.modal-transparent .modal-content .modal-footer {
+    border-top: none;
 }
 
 .modal.off {

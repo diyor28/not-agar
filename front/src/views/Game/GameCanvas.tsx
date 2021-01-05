@@ -7,6 +7,7 @@ import Stats from "./Stats";
 import Ping from "./Ping";
 import RIP from "./RIP";
 import CreatePlayerModal from "./CreatePlayerModal";
+import Tips from "./Tips";
 
 let height = window.innerHeight - 10;
 let width = window.innerWidth - 10;
@@ -65,6 +66,7 @@ export default class GameCanvas extends React.Component {
                 <CreatePlayerModal onCreated={this.onCreated}/>
                 <Ping ping={this.state.ping}/>
                 <RIP show={this.state.show}/>
+                <Tips/>
                 <Stats stats={this.state.stats}/>
                 <Sketch
                     setup={(p5, parentRef) => {

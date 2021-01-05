@@ -29,6 +29,14 @@ kbd {
     text-shadow: 0 1px 0 #fff;
 }
 
+
+.tips {
+    position: absolute;
+    bottom: 1%;
+    left: 50%;
+    transform: translate(-50%, 0);
+}
+
 .App {
     text-align: center;
 }
@@ -161,6 +169,11 @@ kbd {
     margin: 10px 0;
 }
 
+.input-block {
+    box-sizing: border-box;
+    width: 100%;
+}
+
 .btn {
     border: 0;
     border-radius: 5px;
@@ -172,6 +185,10 @@ kbd {
 .btn-lg {
     padding: 0.6rem 1rem;
     font-size: 1.0rem;
+}
+
+.btn-block {
+    width: 100%;
 }
 
 .btn-success {

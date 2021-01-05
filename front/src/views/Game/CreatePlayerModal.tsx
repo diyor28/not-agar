@@ -1,5 +1,4 @@
 import React, {FormEvent} from 'react';
-import Modal from '../../components/Modal'
 import axios from 'axios'
 import ButtonLoading from '../../components/ButtonLoading'
 
@@ -33,25 +32,22 @@ export default class CreatePlayerModal extends React.Component<Props, {}> {
     }
 
     render() {
+        if (!this.state.show) {
+            return null;
+        }
         return (
-            <div>
-                <Modal onClose={this.hideModal}
-                       width={300}
-                       show={this.state.show} footerClass="align-center"
-                       footer={
-                           <ButtonLoading btnClass="btn btn-lg btn-success"
-                                          onClick={this.createPlayer}>
-                               Play
-                           </ButtonLoading>
-                       }>
+            <div className="modal modal-transparent" id="modal">
+                <div className="modal-content" style={{width: 300 + 'px'}}>
                     <form className={'my-5'} onSubmit={this.createPlayer}>
-                        <input autoFocus={true} placeholder={'Your nickname'} type="text" value={this.state.nickname}
+                        <input className="input-block" autoFocus={true} placeholder={'Your nickname'} type="text"
+                               value={this.state.nickname}
                                onChange={this.handleChange}/>
                     </form>
-                    <div style={{marginBottom: "10px"}}>
-                        Tip: Press <kbd>a</kbd> to accelerate
-                    </div>
-                </Modal>
+                    <ButtonLoading btnClass="btn btn-lg btn-success btn-block"
+                                   onClick={this.createPlayer}>
+                        Play
+                    </ButtonLoading>
+                </div>
             </div>
         );
     }

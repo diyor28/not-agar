@@ -6,7 +6,8 @@ export interface Props {
     show: boolean,
     footer?: any,
     width?: number,
-    footerClass?: string
+    footerClass?: string,
+    transparent?: boolean
 }
 
 export default class Modal extends React.Component<Props, {}> {
@@ -18,7 +19,7 @@ export default class Modal extends React.Component<Props, {}> {
         if (!this.props.show) {
             return null;
         }
-        return <div className="modal" id="modal">
+        return <div className={'modal ' + (this.props.transparent ? 'modal-transparent' : '')} id="modal">
             <div className="modal-content" style={{width: this.props.width || 500 + 'px'}}>
                 <div className="modal-body">
                     {this.props.children}
