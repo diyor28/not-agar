@@ -1,5 +1,5 @@
 import React, {FormEvent} from 'react';
-import axios from 'axios'
+import axios, {AxiosError} from 'axios'
 import ButtonLoading from '../../components/ButtonLoading'
 
 export interface Props {
@@ -21,8 +21,8 @@ export default class CreatePlayerModal extends React.Component<Props, {}> {
     createPlayer = (event: FormEvent) => {
         event.preventDefault()
         let data = {nickname: this.state.nickname}
-        axios.post(this.apiUrl + "/players", data).then(r => {
-            this.props.onCreated(r.data)
+        axios.post(this.apiUrl + "/players", data).then(response => {
+            this.props.onCreated(response.data)
         })
         this.hideModal()
     }

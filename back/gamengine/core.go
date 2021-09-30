@@ -82,7 +82,7 @@ func NewGameMap() *GameMap {
 		Hub:    hub,
 	}
 	hub.On("ping", gameMap.sendPong)
-	hub.On("accelerate", gameMap.handleAccelerate)
+	hub.On("shoot", gameMap.handleShoot)
 	hub.On("move", gameMap.handleMoveEvent)
 	return &gameMap
 }
@@ -108,7 +108,7 @@ func (gMap *GameMap) handleMoveEvent(data interface{}, playerId string) {
 	//}
 }
 
-func (gMap *GameMap) handleAccelerate(data interface{}, playerId string) {
+func (gMap *GameMap) handleShoot(data interface{}, playerId string) {
 	var accelerateData AccelerateEvent
 	if err := mapstructure.Decode(data, &accelerateData); err != nil {
 		log.Println(err)
@@ -153,19 +153,8 @@ func (gMap *GameMap) populateSpikes() {
 }
 
 func (gMap *GameMap) populateFood() {
-	var totalWeight float32 = 0
-	maxFood := MaxNumFood
-	for _, p := range gMap.Players {
-		totalWeight += p.Weight * p.Weight * math.Pi
-	}
-	for _, f := range gMap.Foods {
-		totalWeight += f.Weight * f.Weight * math.Pi
-	}
-	//density := int(20 * totalWeight / SurfaceArea)
-	//fmt.Println("DENSITY", 20 * totalWeight / SurfaceArea)
-	//maxFood -= density
-	if len(gMap.Foods) < maxFood {
-		for i := 0; i < maxFood-len(gMap.Foods); i++ {
+	if len(gMap.Foods) < MaxNumFood {
+		for i := 0; i < MaxNumFood-len(gMap.Foods); i++ {
 			gMap.createRandomFood()
 		}
 	}

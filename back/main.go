@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/diyor28/not-agar/gamengine"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
@@ -54,7 +55,9 @@ func createPlayer(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	runtime.GOMAXPROCS(4)
+	processes := 4
+	fmt.Println("Setting max processes:", processes)
+	runtime.GOMAXPROCS(processes)
 	go gameMap.Run()
 	router := mux.NewRouter().StrictSlash(true)
 	api := router.PathPrefix("/api").Subrouter()
@@ -62,6 +65,7 @@ func main() {
 	router.HandleFunc("/player-ws/{uuid}/", playerWS)
 	router.HandleFunc("/admin", adminWS)
 	router.PathPrefix("/").Handler(http.FileServer(http.Dir("./static")))
+	fmt.Println("Listening on port 3100")
 	err := http.ListenAndServe(":3100", router)
 	log.Fatal(err)
 }

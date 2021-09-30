@@ -134,7 +134,7 @@ func (pl *Player) setWeight(weight float32) {
 	pl.Speed = getSpeedFromWeight(pl.Weight)
 }
 
-func (pl *Player) makeMove(gameMap *GameMap) {
+func (pl *Player) makeMove(gameMap *GameMap) {1
 	foods := gameMap.Foods.closest(pl, 1)
 	closestFood := foods[0]
 	pl.updateDirection(closestFood.X, closestFood.Y)
