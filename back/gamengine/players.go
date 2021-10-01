@@ -26,7 +26,6 @@ type Player struct {
 	VelocityY    float32 `json:"-"`
 	Color        [3]int  `json:"color"`
 	Accelerating bool    `json:"-"`
-	WeightBurned float32 `json:"-"`
 	Speed        float32 `json:"-"`
 	Zoom         float32 `json:"-"`
 	IsBot        bool    `json:"-"`
@@ -77,26 +76,12 @@ func (pl *Player) foodEatable(food *Food) bool {
 
 func (pl *Player) updatePosition(gMap *GameMap) {
 	speed := pl.Speed
-	if pl.Accelerating {
-		speed = utils.Clip(speed*2, MinSpeed, MaxSpeed)
-		pl.WeightBurned += pl.Weight / 100
-		pl.Accelerating = false
-	}
 	newX := pl.X + speed*pl.VelocityX
 	newY := pl.Y + speed*pl.VelocityY
 	newZoom := (MinWeight/pl.Weight)*(MaxZoom-MinZoom) + MinZoom
 	pl.X = utils.Clip(newX, MinXY, MaxXY)
 	pl.Y = utils.Clip(newY, MinXY, MaxXY)
 	pl.Zoom = utils.Clip(newZoom, MinZoom, MaxZoom)
-	if pl.WeightBurned >= FoodWeight {
-		pl.WeightBurned -= FoodWeight
-		pl.addWeight(-FoodWeight)
-		x := pl.X - speed*pl.VelocityX
-		y := pl.Y - speed*pl.VelocityY
-		x -= float32(math.Copysign(float64(pl.Weight), float64(pl.VelocityX))) * (pl.VelocityX * pl.VelocityX)
-		y -= float32(math.Copysign(float64(pl.Weight), float64(pl.VelocityY))) * (pl.VelocityY * pl.VelocityY)
-		gMap.createFood(x, y)
-	}
 }
 
 func (pl *Player) updateDirection(newX float32, newY float32) {
@@ -107,16 +92,6 @@ func (pl *Player) updateDirection(newX float32, newY float32) {
 	velocityY := diffY / dist
 	pl.VelocityX = float32(velocityX)
 	pl.VelocityY = float32(velocityY)
-}
-
-func (pl Player) canEat(anotherPlayer *Player) bool {
-	dist := float64(utils.CalcDistance(pl.X, anotherPlayer.X, pl.Y, anotherPlayer.Y))
-	radius1 := float64(pl.Weight) / 2
-	radius2 := float64(anotherPlayer.Weight) / 2
-	interSection := utils.IntersectionArea(radius1, radius2, dist) / utils.SurfaceArea64(radius2)
-	closeEnough := interSection > 0.85
-	bigEnough := pl.surfaceArea*0.85 > anotherPlayer.surfaceArea
-	return bigEnough && closeEnough
 }
 
 func (pl *Player) addWeight(weight float32) {
@@ -134,7 +109,7 @@ func (pl *Player) setWeight(weight float32) {
 	pl.Speed = getSpeedFromWeight(pl.Weight)
 }
 
-func (pl *Player) makeMove(gameMap *GameMap) {1
+func (pl *Player) makeMove(gameMap *GameMap) {
 	foods := gameMap.Foods.closest(pl, 1)
 	closestFood := foods[0]
 	pl.updateDirection(closestFood.X, closestFood.Y)

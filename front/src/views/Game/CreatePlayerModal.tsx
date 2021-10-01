@@ -1,5 +1,5 @@
 import React, {FormEvent} from 'react';
-import axios, {AxiosError} from 'axios'
+import axios from 'axios'
 import ButtonLoading from '../../components/ButtonLoading'
 
 export interface Props {
@@ -35,6 +35,12 @@ export default class CreatePlayerModal extends React.Component<Props, {}> {
         if (!this.state.show) {
             return null;
         }
+        // this.props.onCreated({ // TODO: remove later
+        //         player: {uuid: '1', nickname: 'demo', x: 400, y: 500, weight: 100, color: [255, 21, 21], zoom: 1},
+        //         spikes: []
+        //     }
+        // )
+        // this.hideModal()
         return (
             <div className="modal modal-transparent" id="modal">
                 <div className="modal-content" style={{width: 300 + 'px'}}>

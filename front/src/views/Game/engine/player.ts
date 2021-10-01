@@ -26,22 +26,43 @@ export type SelfPlayerData = {
 
 export default class Player extends Entity {
     public nickname;
+    public cannonAngle;
 
     constructor({x, y, cameraX, cameraY, nickname, weight, color}: PlayerData) {
         super({x, y, cameraX, cameraY, weight, color})
         this.nickname = nickname
+        this.cannonAngle = 90
+    }
+
+    drawCannon(p5: p5Types, ringColor: number[]) {
+        let x = this.x
+        let y = this.y
+        let r = this.weight / 2
+        let a = Math.PI * this.cannonAngle / 180
+        let width = 20
+        let height = 20
+        let cornerRadius = 5
+        y += Math.sin(a) * r
+        x += Math.cos(a) * r
+        p5.fill(ringColor)
+        p5.translate(this.x, this.y)
+        p5.rotate(a * - 1)
+        p5.rect(x - width / 2, y, width, height, cornerRadius)
+        p5.rotate(a)
     }
 
     draw(p5: p5Types) {
+        let ringColor = lightenDarkenColor(this.color, - 20)
         p5.fill(this.color)
         p5.strokeWeight(strokeWeight)
-        p5.stroke(lightenDarkenColor(this.color, -20))
+        p5.stroke(ringColor)
         p5.ellipse(this.x, this.y, this.weight, this.weight)
         p5.noStroke()
         p5.fill(textColor)
         p5.textAlign(p5.CENTER, p5.CENTER)
         p5.textSize(this.weight / 5)
         p5.text(this.nickname, this.x, this.y)
+        this.drawCannon(p5, ringColor)
     }
 }
 
@@ -59,6 +80,14 @@ export class SelfPlayer extends Player {
         this.zoom = zoom
         this.height = height
         this.width = width
+        window.addEventListener('keydown', event => {
+            if (event.code === 'ArrowUp') {
+                this.cannonAngle += 10
+            }
+            if (event.code === 'ArrowDown') {
+                this.cannonAngle -= 10
+            }
+        })
     }
 
     update(data: MovedEvent) {

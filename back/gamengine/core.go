@@ -129,8 +129,8 @@ func (gMap *GameMap) sendPong(data interface{}, playerId string) {
 }
 
 func (gMap *GameMap) populateBots() {
-	maxBots := (MaxPlayers - len(gMap.Players)) / 2
-	//maxBots := 0
+	//maxBots := (MaxPlayers - len(gMap.Players)) / 2
+	maxBots := 0
 	currentBots := gMap.Players.botsCount()
 	if currentBots < maxBots {
 		for i := 0; i < maxBots; i++ {
@@ -230,7 +230,7 @@ func (gMap *GameMap) Run() {
 		}
 		wg.Wait()
 		gMap.removeEatableFood()
-		gMap.removeEatablePlayers()
+		gMap.removeDeadPlayers()
 		time.Sleep(15 * time.Millisecond)
 		//fmt.Println("running loop")
 	}
@@ -318,52 +318,11 @@ func (gMap *GameMap) spikeCollisions(pl *Player) bool {
 	return false
 }
 
-func (gMap *GameMap) removeEatablePlayers() {
+func (gMap *GameMap) removeDeadPlayers() {
 	// take first player, compare it to every other player after it
 	// get a new array of players that
-	//fmt.Println("Removing eatable players")
-	totalPlayers := len(gMap.Players)
-	var willBeEaten = make(map[int]bool, totalPlayers)
-	for i := 0; i < totalPlayers; i++ {
-		willBeEaten[i] = false
-	}
-
-	for i := 0; i < totalPlayers; i++ {
-		p1 := gMap.Players[i]
-		if gMap.spikeCollisions(p1) {
-			willBeEaten[i] = true
-		}
-		for k := i; k < totalPlayers; k++ {
-			if willBeEaten[k] {
-				continue
-			}
-			p2 := gMap.Players[k]
-			if p1.canEat(p2) {
-				p1.eatEntity(p2)
-				willBeEaten[k] = true
-			}
-
-			if p2.canEat(p1) {
-				p2.eatEntity(p1)
-				willBeEaten[i] = true
-			}
-		}
-	}
-	var newPlayers Players
-	var eatenPlayers []Player
-	for index, value := range willBeEaten {
-		if value {
-			if gMap.Players[index].IsBot {
-				continue
-			}
-			eatenPlayers = append(eatenPlayers, *gMap.Players[index])
-		} else {
-			newPlayers = append(newPlayers, gMap.Players[index])
-		}
-	}
-
-	for _, p := range eatenPlayers {
-		gMap.Hub.Emit("rip", "", p.Uuid)
-	}
-	gMap.Players = newPlayers
+	//for _, p := range eatenPlayers {
+	//	gMap.Hub.Emit("rip", "", p.Uuid)
+	//}
+	//gMap.Players = newPlayers
 }

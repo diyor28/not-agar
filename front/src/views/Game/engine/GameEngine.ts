@@ -106,8 +106,8 @@ export default class Game {
         return this.socket.ping
     }
 
-    accelerate() {
-        this.socket.emit('accelerate', {uuid: this.selfPlayer.uuid})
+    shoot() {
+        this.socket.emit('shoot', {uuid: this.selfPlayer.uuid})
     }
 
     playersUpdated(data: PlayerData[]) {

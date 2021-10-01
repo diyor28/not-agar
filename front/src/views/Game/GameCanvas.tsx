@@ -55,10 +55,11 @@ export default class GameCanvas extends React.Component {
             if (event.key !== 'a') {
                 return
             }
-            game.accelerate()
+            game.shoot()
         })
         this.game = game
     }
+
 
     render() {
         return (
