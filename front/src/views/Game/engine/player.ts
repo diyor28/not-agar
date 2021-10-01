@@ -40,14 +40,15 @@ export default class Player extends Entity {
         let r = this.weight / 2
         let a = Math.PI * this.cannonAngle / 180
         let width = 20
-        let height = 20
+        let height = 30
         let cornerRadius = 5
+        // p5.translate(this.x, this.y)
         y += Math.sin(a) * r
         x += Math.cos(a) * r
-        p5.fill(ringColor)
-        p5.translate(this.x, this.y)
+        console.log(x, y)
         p5.rotate(a * - 1)
-        p5.rect(x - width / 2, y, width, height, cornerRadius)
+        p5.fill(ringColor)
+        p5.rect(x, y, width, height, cornerRadius)
         p5.rotate(a)
     }
 
