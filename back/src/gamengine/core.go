@@ -1,8 +1,8 @@
 package gamengine
 
 import (
-	"github.com/diyor28/not-agar/randomname"
-	"github.com/diyor28/not-agar/sockethub"
+	"github.com/diyor28/not-agar/src/randomname"
+	"github.com/diyor28/not-agar/src/sockethub"
 	"github.com/frankenbeanies/uuid4"
 	"github.com/mitchellh/mapstructure"
 	"log"

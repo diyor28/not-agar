@@ -2,7 +2,7 @@ package gamengine
 
 import (
 	"errors"
-	"github.com/diyor28/not-agar/utils"
+	"github.com/diyor28/not-agar/src/utils"
 )
 
 type Entity struct {

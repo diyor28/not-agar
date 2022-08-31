@@ -1,7 +1,7 @@
 package gamengine
 
 import (
-	"github.com/diyor28/not-agar/utils"
+	"github.com/diyor28/not-agar/src/utils"
 	"github.com/frankenbeanies/uuid4"
 )
 

@@ -14,7 +14,6 @@ type Client struct {
 }
 
 func (conn *Client) writer() {
-	//fmt.Println("writer active")
 	defer func() {
 		conn.socket.Close()
 	}()

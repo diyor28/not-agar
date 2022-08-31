@@ -58,7 +58,6 @@ func (h *Hub) Run() {
 				close(client.send)
 			}
 		case message := <-h.broadcast:
-			//fmt.Println("emitting event", message.Event, len(h.clients))
 			for client := range h.clients {
 				if client.roomId != message.roomId {
 					continue
@@ -66,7 +65,6 @@ func (h *Hub) Run() {
 				client.send <- message.Message
 			}
 		case message := <-h.readBuffer:
-			//fmt.Println("received event", message.Event)
 			go h.receivedEvent(message)
 		}
 	}
