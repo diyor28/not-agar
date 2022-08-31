@@ -1,13 +1,11 @@
 import React, {FormEvent} from 'react';
-import axios from 'axios'
 import ButtonLoading from '../../components/ButtonLoading'
 
 export interface Props {
-    onCreated: Function,
+    onFill: Function,
 }
 
 export default class CreatePlayerModal extends React.Component<Props, {}> {
-    apiUrl = process.env.REACT_APP_API_URL
     state = {
         show: true,
         nickname: ''
@@ -19,12 +17,9 @@ export default class CreatePlayerModal extends React.Component<Props, {}> {
     };
 
     createPlayer = (event: FormEvent) => {
-        event.preventDefault()
-        let data = {nickname: this.state.nickname}
-        axios.post(this.apiUrl + "/players", data).then(response => {
-            this.props.onCreated(response.data)
-        })
-        this.hideModal()
+        event.preventDefault();
+        this.props.onFill({nickname: this.state.nickname});
+        this.hideModal();
     }
 
     handleChange = (event: any) => {

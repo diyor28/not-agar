@@ -1,6 +1,4 @@
-import Entity, {EntityData} from "./entity";
-
-export type FoodData = EntityData & {}
+import Entity from "./entity";
 
 export default class Food extends Entity {
 }

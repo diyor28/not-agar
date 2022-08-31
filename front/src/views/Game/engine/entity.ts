@@ -1,14 +1,5 @@
-import p5Types from "p5"; //Import this for typechecking and intellisense
-
-export type EntityData = {
-    x: number,
-    y: number,
-    cameraX: number,
-    cameraY: number,
-    weight: number,
-    color: number[]
-}
-
+import p5Types from "p5";
+import {EntityData} from "../client/types"; //Import this for typechecking and intellisense
 
 export default class Entity {
     _x: number;

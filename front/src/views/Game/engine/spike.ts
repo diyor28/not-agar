@@ -1,8 +1,7 @@
-import Entity, {EntityData} from "./entity";
+import Entity from "./entity";
 
 import p5Types from "p5";
 import {lightenDarkenColor} from "./utils"; //Import this for typechecking and intellisense
-export type SpikeData = EntityData & {}
 
 export default class Spike extends Entity {
     draw(p5: p5Types) {

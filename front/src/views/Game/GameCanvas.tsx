@@ -1,8 +1,6 @@
 import React from 'react';
 import Sketch from 'react-p5';
 import Game from "./engine/GameEngine";
-import {SelfPlayerData} from "./engine/player";
-import {SpikeData} from "./engine/spike";
 import Stats from "./Stats";
 import Ping from "./Ping";
 import RIP from "./RIP";
@@ -14,7 +12,7 @@ let width = window.innerWidth - 10;
 // const frameRate = 40
 
 export default class GameCanvas extends React.Component {
-    game?: Game
+    game = new Game(width, height);
     // game = new Game(width, height, {
     //     uuid: "2423423",
     //     color: [255, 0, 255],
@@ -31,40 +29,31 @@ export default class GameCanvas extends React.Component {
         ping: null
     };
 
-    onCreated = (data: { player: SelfPlayerData, spikes: SpikeData[] }) => {
-        let game = new Game(width, height, data.player)
-        game.spikesCreated(data.spikes)
-        game.socket.on('stats', (data) => {
-            this.setState({stats: data})
-        })
+    onFill = async (data: { nickname: string }) => {
+        await this.game.startGame(data);
+        this.game.client.onStatsUpdate((data) => {
+            this.setState({stats: data});
+        });
 
-        game.socket.on('open', () => {
+        this.game.client.socket.onOpen(() => {
             this.setState({socketOpen: true})
-        })
+        });
 
-        game.socket.on('pong', () => {
-            this.setState({ping: game.ping})
-        })
+        this.game.client.onPong(({ping}) => {
+            this.setState({ping});
+        });
 
-        game.socket.on('rip', () => {
-            game.socket.close()
+        this.game.client.onRip(() => {
+            // game.socket.close()
             this.setState({show: true})
-        })
-
-        window.addEventListener('keydown', (event: KeyboardEvent) => {
-            if (event.key !== 'a') {
-                return
-            }
-            game.shoot()
-        })
-        this.game = game
+        });
     }
 
 
     render() {
         return (
             <div>
-                <CreatePlayerModal onCreated={this.onCreated}/>
+                <CreatePlayerModal onFill={this.onFill}/>
                 <Ping ping={this.state.ping}/>
                 <RIP show={this.state.show}/>
                 <Tips/>

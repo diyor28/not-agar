@@ -1,28 +1,10 @@
-import Entity, {EntityData} from "./entity";
+import Entity from "./entity";
 import p5Types from "p5"; //Import this for typechecking and intellisense
-import {lightenDarkenColor, SocketWrapper} from './utils'
+import {lightenDarkenColor} from './utils'
+import {MovedEvent, PlayerData, SelfPlayerData} from "../client";
 
 const strokeWeight = 8
 const textColor = 255
-
-export type PlayerData = EntityData & { nickname: string }
-export type MovedEvent = {
-    x: number,
-    y: number,
-    zoom: number,
-    weight: number
-}
-
-
-export type SelfPlayerData = {
-    uuid: string,
-    x: number,
-    y: number,
-    nickname: string,
-    weight: number,
-    color: number[],
-    zoom: number
-}
 
 export default class Player extends Entity {
     public nickname;
@@ -32,24 +14,6 @@ export default class Player extends Entity {
         super({x, y, cameraX, cameraY, weight, color})
         this.nickname = nickname
         this.cannonAngle = 90
-    }
-
-    drawCannon(p5: p5Types, ringColor: number[]) {
-        let x = this.x
-        let y = this.y
-        let r = this.weight / 2
-        let a = Math.PI * this.cannonAngle / 180
-        let width = 20
-        let height = 30
-        let cornerRadius = 5
-        // p5.translate(this.x, this.y)
-        y += Math.sin(a) * r
-        x += Math.cos(a) * r
-        console.log(x, y)
-        p5.rotate(a * - 1)
-        p5.fill(ringColor)
-        p5.rect(x, y, width, height, cornerRadius)
-        p5.rotate(a)
     }
 
     draw(p5: p5Types) {
@@ -63,32 +27,21 @@ export default class Player extends Entity {
         p5.textAlign(p5.CENTER, p5.CENTER)
         p5.textSize(this.weight / 5)
         p5.text(this.nickname, this.x, this.y)
-        this.drawCannon(p5, ringColor)
     }
 }
 
 export class SelfPlayer extends Player {
     public uuid: string;
-    public socket: SocketWrapper;
     public height: number;
     public width: number;
     public zoom: number;
 
-    constructor(socket: SocketWrapper, {uuid, x, y, nickname, weight, color, zoom}: SelfPlayerData, height: number, width: number) {
+    constructor({uuid, x, y, nickname, weight, color, zoom}: SelfPlayerData, height: number, width: number) {
         super({x, y, nickname, cameraX: x, cameraY: y, weight, color});
         this.uuid = uuid;
-        this.socket = socket
         this.zoom = zoom
         this.height = height
         this.width = width
-        window.addEventListener('keydown', event => {
-            if (event.code === 'ArrowUp') {
-                this.cannonAngle += 10
-            }
-            if (event.code === 'ArrowDown') {
-                this.cannonAngle -= 10
-            }
-        })
     }
 
     update(data: MovedEvent) {
