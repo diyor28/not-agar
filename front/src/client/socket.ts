@@ -1,4 +1,4 @@
-import {Type} from "../codec";
+import {Schema} from "../codec";
 
 export class BaseSocket {
 	public readonly socket: WebSocket;
@@ -39,10 +39,10 @@ export class BaseSocket {
 }
 
 export class BinarySocket extends BaseSocket {
-	schema: Type;
-	protected eventListeners: { event: string, callback: (data: any) => void, schema: Type }[] = [];
+	schema: Schema;
+	protected eventListeners: { event: string, callback: (data: any) => void, schema: Schema }[] = [];
 
-	constructor(url: string, schema: Type) {
+	constructor(url: string, schema: Schema) {
 		super(url);
 		this.schema = schema;
 		this.onMessage((data) => {
@@ -67,7 +67,7 @@ export class BinarySocket extends BaseSocket {
 		this.socket.send(data);
 	}
 
-	on(event: string, callback: (data: any) => void, schema: Type) {
+	on(event: string, callback: (data: any) => void, schema: Schema) {
 		this.eventListeners.push({event, callback, schema});
 	}
 }

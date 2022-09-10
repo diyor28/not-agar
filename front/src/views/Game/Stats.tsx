@@ -1,7 +1,7 @@
 import React from 'react';
 import "../../components/modal.css";
-import {StatsUpdate} from './engine/GameEngine'
-import {isMobile} from "./engine/utils";
+import {StatsUpdate} from '../../engine/GameEngine'
+import {isMobile} from "../../engine/utils";
 
 export interface Props {
     stats: StatsUpdate[]

@@ -1,5 +1,5 @@
 import React from "react";
-import {isMobile} from "./engine/utils";
+import {isMobile} from "../../engine/utils";
 
 export default class Tips extends React.Component {
     render() {

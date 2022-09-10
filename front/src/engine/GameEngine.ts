@@ -47,7 +47,7 @@ import Food from "./food";
 import p5Types from "p5";
 import Spike from "./spike"; //Import this for typechecking and intellisense
 import JoyStick from "./joystick";
-import GameClient, {MovedEvent, SpikeData, FoodData, PlayerData} from "../client";
+import GameClient, {FoodData, MovedEvent, PlayerData, SpikeData} from "../client";
 
 export type StatsUpdate = {
     weight: number,
@@ -61,6 +61,7 @@ export default class Game {
     public stats: StatsUpdate[];
     public client: GameClient;
     public selfPlayer!: SelfPlayer;
+    public started = false;
     public _zoom: number;
     private readonly socketUrl: string;
     public width: number;
@@ -95,16 +96,19 @@ export default class Game {
     async startGame({nickname}: { nickname: string }) {
         const {player, spikes} = await this.client.startGame({nickname});
         this.selfPlayer = new SelfPlayer(player, this.height, this.width);
+        this.started = true;
         this.initSpikes(spikes);
     }
 
     windowResized(width: number, height: number) {
         this.width = width;
         this.height = height;
-        this.selfPlayer.width = width;
-        this.selfPlayer.height = height;
         this.joystick.width = width;
         this.joystick.height = height;
+        if (!this.started)
+            return
+        this.selfPlayer.width = width;
+        this.selfPlayer.height = height;
     }
 
     onStatsUpdate(data: StatsUpdate[]) {
@@ -173,6 +177,8 @@ export default class Game {
     }
 
     draw(p5: p5Types) {
+        if (!this.started)
+            return;
         this.updateZoom()
         p5.background(240);
         p5.translate(this.width / 2, this.height / 2);
@@ -184,10 +190,14 @@ export default class Game {
     }
 
     touchStarted(p5: p5Types) {
+        if (!this.started)
+            return;
         this.joystick.touchStarted(p5.mouseX, p5.mouseY)
     }
 
     touchMoved(p5: p5Types) {
+        if (!this.started)
+            return;
         const {newX, newY} = this.joystick.move(p5.mouseX, p5.mouseY)
         this.emitMove(newX, newY)
     }
@@ -205,10 +215,14 @@ export default class Game {
     }
 
     touchEnded(p5: p5Types) {
+        if (!this.started)
+            return;
         this.joystick.touchEnded()
     }
 
     mouseMoved(mouseX: number, mouseY: number) {
+        if (!this.started)
+            return;
         const {newX, newY} = this.selfPlayer.move(mouseX, mouseY)
         this.emitMove(newX, newY)
     }

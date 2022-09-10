@@ -1,7 +1,7 @@
-import {Type} from "../codec";
+import {Schema} from "../codec";
 import {BinarySocket} from "./socket";
 import {StatsUpdate} from "../engine/GameEngine";
-import {FoodData, InitialData, MoveCommand, MovedEvent, SelfPlayerData, SpikeData, PlayerData} from "./types";
+import {FoodData, InitialData, MoveCommand, MovedEvent, PlayerData, SelfPlayerData, SpikeData} from "./types";
 
 export type {MovedEvent, SpikeData, SelfPlayerData, EntityData, MoveCommand, PlayerData, FoodData, InitialData} from './types';
 
@@ -10,44 +10,44 @@ export default class GameClient {
 	socket: BinarySocket;
 	pingInterval: number
 	private schemas = {
-		ping: new Type({
+		ping: new Schema({
 			event: 'string',
-			timestamp: 'uint'
+			timestamp: 'uint32'
 		}),
-		move: new Type({
+		move: new Schema({
 			event: 'string',
-			newX: 'uint',
-			newY: 'uint'
+			newX: 'uint16',
+			newY: 'uint16'
 		}),
-		moved: new Type({
+		moved: new Schema({
 			event: 'string',
-			x: 'float',
-			y: 'float',
-			weight: 'float',
-			zoom: 'float'
+			x: 'float32',
+			y: 'float32',
+			weight: 'float32',
+			zoom: 'float32'
 		}),
-		start: new Type({
+		start: new Schema({
 			event: 'string',
 			nickname: 'string'
 		}),
-		started: new Type({
+		started: new Schema({
 			event: 'string',
 			player: {
 				uuid: 'string',
 				nickname: 'string',
-				color: ['uint'],
-				x: 'float',
-				y: 'float',
-				weight: 'float',
-				speed: 'float',
-				zoom: 'float'
+				color: ['uint8'],
+				x: 'float32',
+				y: 'float32',
+				weight: 'float32',
+				speed: 'float32',
+				zoom: 'float32'
 			},
 			spikes: [
 				{
 					uuid: 'string',
-					x: 'float',
-					y: 'float',
-					weight: 'float'
+					x: 'float32',
+					y: 'float32',
+					weight: 'float32'
 				}
 			]
 		})
@@ -55,7 +55,7 @@ export default class GameClient {
 
 	constructor(url: string, pingInterval: number) {
 		this.pingInterval = pingInterval;
-		const schema = new Type({event: 'string'});
+		const schema = new Schema({event: 'string'});
 		this.socket = new BinarySocket(url, schema);
 		this.registerPongListener();
 		this.socket.onOpen(() => {
@@ -79,7 +79,7 @@ export default class GameClient {
 	}
 
 	public onPlayersUpdate(callback: (data: PlayerData[]) => void) {
-
+		// this.socket.on('pUpdated', callback, this.schemas)
 	}
 
 	public onFoodUpdate(callback: (data: FoodData[]) => void) {

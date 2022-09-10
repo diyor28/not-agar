@@ -191,7 +191,7 @@ func (gMap *GameMap) publishAdminStats() {
 func (gMap *GameMap) notifyPlayer(player *Player) {
 	gMap.Hub.Emit("moved", MovedEvent{player.X, player.Y, player.Weight, player.Zoom}, player.Uuid)
 	players := gMap.Players.closest(player, NumPlayersResponse)
-	gMap.Hub.Emit("playersUpdated", players, player.Uuid)
+	gMap.Hub.Emit("pUpdated", players, player.Uuid)
 	foods := gMap.Foods.closest(player, NumFoodResponse)
 	gMap.Hub.Emit("foodUpdated", foods, player.Uuid)
 }

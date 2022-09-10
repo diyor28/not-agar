@@ -316,7 +316,7 @@ var proxy_socks5Errors = []string{
 	"connection refused",
 	"TTL expired",
 	"command not supported",
-	"address type not supported",
+	"address typt not supported",
 }
 
 // Dial connects to the address addr on the given network via the SOCKS5 proxy.

@@ -1,63 +1,18 @@
-import types from './types';
-import Field from "./Field";
-import Data from "./Data";
-import ReadState from "./ReadState";
+import types, {ExtendedPrimitiveType, PrimitiveType, RecursiveTypeMapping} from './types';
+import Field from "./field";
+import Data from "./data";
+import ReadState from "./readState";
 
-export type BasicType = keyof typeof types;
-export type BasicTypeMapping<T> = Record<string, BasicType | BasicType[] | T | T[]>;
-
-export interface RecursiveTypeMapping extends BasicTypeMapping<RecursiveTypeMapping> {
-
-}
-
-export type CombinedType = BasicType | Array<BasicType> | RecursiveTypeMapping;
-
-const TYPE = {
-	UINT: 'uint',
-	INT: 'int',
-	FLOAT: 'float',
-	STRING: 'string',
-	BUFFER: 'Buffer',
-	BOOLEAN: 'boolean',
-	JSON: 'json',
-	OID: 'oid',
-	REGEX: 'regex',
-	DATE: 'date',
-	ARRAY: '[array]',
-	OBJECT: '{object}'
-};
-
-export default class Type {
-	public TYPE = TYPE;
-	public types = types;
-	public type: BasicType;
-	public subType?: Type;
+export default class Schema {
 	public fields: Field[] = [];
 
-	constructor(type: CombinedType) {
-		if (typeof type === 'string') {
-			if (type in this.TYPE && type !== this.TYPE.ARRAY && type !== this.TYPE.OBJECT) {
-				throw new TypeError('Unknown basic type: ' + type)
-			}
-
-			this.type = type;
-		} else if (Array.isArray(type)) {
-			if (type.length !== 1) {
-				throw new TypeError('Invalid array type, it must have exactly one element')
-			}
-
-			this.type = this.TYPE.ARRAY as BasicType;
-			this.subType = new Type(type[0]);
-		} else {
-			if (!type || typeof type !== 'object') {
-				throw new TypeError('Invalid type: ' + type)
-			}
-
-			this.type = this.TYPE.OBJECT as BasicType;
-			this.fields = Object.keys(type).map((name) => {
-				return new Field(name, type[name]);
-			})
+	constructor(type: RecursiveTypeMapping) {
+		if (typeof type !== 'object') {
+			throw new TypeError('Invalid type: ' + type)
 		}
+		this.fields = Object.keys(type).map((name) => {
+			return new Field(name, type[name]);
+		})
 	}
 
 	encode(value: any) {
@@ -73,17 +28,18 @@ export default class Type {
 	write(value: any, data: Data, path: string) {
 		let field, subpath, subValue, bitmask = 0;
 
-		if (this.type === this.TYPE.ARRAY && this.subType) {
-			// Array field
-			return this.writeArray(value, data, path, this.subType)
-		} else if (this.type !== this.TYPE.OBJECT) {
-			// Simple type
-			return this.types[this.type].write(value, data, path)
+		if (this.extendedType === 'array' && this.subType) {
+			return this.writeArray(value, data, path, this.subType);
+		}
+
+		if (this.extendedType !== 'object' && this.extendedType !== 'array') {
+			// Simple extendedType
+			return types[this.extendedType].write(value, data, path);
 		}
 
 		// Check for object type
 		if (!value || typeof value !== 'object') {
-			throw new TypeError('Expected an object at ' + path)
+			throw new TypeError('Expected an object at ' + path);
 		}
 
 		// Write each field
@@ -116,11 +72,11 @@ export default class Type {
 	}
 
 	read(state: ReadState): any {
-		if (this.type !== this.TYPE.OBJECT && this.type !== this.TYPE.ARRAY) {
-			// Scalar type
+		if (this.extendedType !== 'object' && this.extendedType !== 'array') {
+			// Scalar extendedType
 			// In this case, there is no need to write custom code
-			return types[this.type].read(state);
-		} else if (this.type === this.TYPE.ARRAY) {
+			return types[this.extendedType].read(state);
+		} else if (this.extendedType === 'array') {
 			// @ts-ignore
 			return this.readArray.bind(this, this.subType)(state);
 		}
@@ -159,17 +115,17 @@ export default class Type {
 	}
 
 	getHash() {
-		const hashType = (type: Type, array: boolean, optional: boolean) => {
-			// Write type (first char + flags)
+		const hashType = (type: Schema, array: boolean, optional: boolean) => {
+			// Write extendedType (first char + flags)
 			// AOxx xxxx
-			hash.writeUInt8((type.type.charCodeAt(0) & 0x3f) | (array ? 0x80 : 0) | (optional ? 0x40 : 0))
+			hash.writeUInt8((type.extendedType.charCodeAt(0) & 0x3f) | (array ? 0x80 : 0) | (optional ? 0x40 : 0))
 
-			if (type.type === this.TYPE.ARRAY) {
-				hashType(type.subType as Type, false, false)
-			} else if (type.type === this.TYPE.OBJECT) {
-				types.uint.write(type.fields.length, hash)
+			if (type.extendedType === 'array') {
+				hashType(type.subType as Schema, false, false)
+			} else if (type.extendedType === 'object') {
+				types.uint.write(type.fields.length, hash);
 				type.fields.forEach(function (field: any) {
-					hashType(field.type, field.array, field.optional)
+					hashType(field.type, field.array, field.optional);
 				})
 			}
 		}
@@ -182,7 +138,7 @@ export default class Type {
 		return (mask >> (this.fields.length - idx)) & 1; // Shift right to put the target at position 0, and AND it with 1
 	}
 
-	private writeArray(value: any, data: Data, path: string, type: Type) {
+	private writeArray(value: any, data: Data, path: string, type: Schema) {
 		let i, len;
 		if (!Array.isArray(value)) {
 			throw new TypeError('Expected an Array at ' + path)
@@ -194,7 +150,7 @@ export default class Type {
 		}
 	}
 
-	private readArray(type: Type, state: ReadState) {
+	private readArray(type: Schema, state: ReadState) {
 		let arr = new Array(types.uint.read(state));
 		for (let j = 0; j < arr.length; j ++) {
 			arr[j] = type.read(state)

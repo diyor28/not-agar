@@ -1,11 +1,12 @@
 import React from 'react';
 import Sketch from 'react-p5';
-import Game from "./engine/GameEngine";
+import Game from "../../engine/GameEngine";
 import Stats from "./Stats";
 import Ping from "./Ping";
 import RIP from "./RIP";
 import CreatePlayerModal from "./CreatePlayerModal";
 import Tips from "./Tips";
+import {Schema} from "../../codec";
 
 let height = window.innerHeight - 10;
 let width = window.innerWidth - 10;
@@ -51,6 +52,18 @@ export default class GameCanvas extends React.Component {
 
 
     render() {
+        const schema = new Schema({
+            food: 'int16',
+            player: {
+                x: 'uint8',
+                y: 'uint8',
+                z: 'uint8'
+            },
+            spikes: 'int32'
+        })
+        const buffer = schema.encode({food: 10, player: {x: 5, y: 8}, spikes: 20})
+        console.log(buffer.toString('hex'));
+        console.log(schema.decode(buffer));
         return (
             <div>
                 <CreatePlayerModal onFill={this.onFill}/>
