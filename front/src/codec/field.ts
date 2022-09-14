@@ -115,9 +115,9 @@ export default class Field {
 			case "buffer":
 				return state.readBuffer();
 			case "float32":
-				return state.readDouble();
+				return state.readFloat32();
 			case "float64":
-				return state.readDouble();
+				return state.readFloat64();
 			case "int8":
 				return state.readInt8();
 			case "int16":
@@ -167,9 +167,9 @@ export default class Field {
 			case "buffer":
 				return data.writeBuffer(value, this.loc);
 			case "float32":
-				return data.writeDouble(value, this.loc);
+				return data.writeFloat32(value, this.loc);
 			case "float64":
-				return data.writeDouble(value, this.loc);
+				return data.writeFloat64(value, this.loc);
 			case "int8":
 				return data.writeInt8(value, this.loc);
 			case "int16":

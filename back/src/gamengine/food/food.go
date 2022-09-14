@@ -1,24 +1,26 @@
-package gamengine
+package food
 
 import (
+	"github.com/diyor28/not-agar/src/gamengine/entity"
+	"github.com/diyor28/not-agar/src/gamengine/player"
 	"github.com/diyor28/not-agar/src/utils"
 	"github.com/frankenbeanies/uuid4"
 )
 
 type Food struct {
-	*Entity
+	*entity.Entity
 	Color [3]int `json:"color"`
 }
 
-func NewFood(x float32, y float32, weight float32) *Food {
+func New(x float32, y float32, weight float32) *Food {
 	food := &Food{
-		Entity: &Entity{
+		Entity: &entity.Entity{
 			Uuid:   uuid4.New().String(),
 			X:      x,
 			Y:      y,
 			Weight: weight,
 		},
-		Color: randomColor(),
+		Color: utils.RandomColor(),
 	}
 	return food
 }
@@ -33,7 +35,7 @@ func (foods Foods) asValues() []Food {
 	return result
 }
 
-func (foods Foods) closest(player *Player, kClosest int) []Food {
+func (foods Foods) Closest(player *player.Player, kClosest int) []Food {
 	foodCopy := foods.asValues()
 	totalNumFood := len(foodCopy)
 	foodDistances := make(map[string]float32, totalNumFood)

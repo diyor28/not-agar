@@ -74,7 +74,13 @@ export default class ReadState {
 		return Boolean(b);
 	}
 
-	readDouble(): number {
+	readFloat32(): number {
+		const r = this.buffer.readFloatBE(this.offset);
+		this.offset += 4;
+		return r;
+	}
+
+	readFloat64(): number {
 		const r = this.buffer.readDoubleBE(this.offset);
 		this.offset += 8;
 		return r;

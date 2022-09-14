@@ -4,41 +4,40 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-type Message struct {
-	Event string      `json:"event"`
-	Data  interface{} `json:"data"`
+type BroadcastMessage struct {
+	Data     []byte
+	channels []string
 }
 
-type BroadcastMessage struct {
-	Message
-	roomId string
+type ReadMessage struct {
+	Data   []byte
+	Client *Client
 }
 
 type EventHandler struct {
 	Event    string
-	Callback func(data interface{}, roomId string)
+	Callback func(data interface{}, client *Client)
 }
 
 type Hub struct {
-	connections   []*Client
-	eventHandlers []EventHandler
 	// Registered clients.
 	clients map[*Client]bool
 
 	// Inbound messages from the clients.
 	broadcast  chan BroadcastMessage
-	readBuffer chan BroadcastMessage
+	readBuffer chan ReadMessage
 
 	// Register requests from the clients.
 	register chan *Client
 
 	// Unregister requests from clients.
 	unregister chan *Client
+	onMessage  func(data []byte, client *Client)
 }
 
 func NewHub() *Hub {
 	h := Hub{
-		readBuffer: make(chan BroadcastMessage),
+		readBuffer: make(chan ReadMessage),
 		broadcast:  make(chan BroadcastMessage),
 		register:   make(chan *Client),
 		unregister: make(chan *Client),
@@ -59,36 +58,33 @@ func (h *Hub) Run() {
 			}
 		case message := <-h.broadcast:
 			for client := range h.clients {
-				if client.roomId != message.roomId {
+				isCorrectRecipient := false
+				for _, c := range message.channels {
+					isCorrectRecipient = isCorrectRecipient || client.IsInChannel(c)
+				}
+				if !isCorrectRecipient {
 					continue
 				}
-				client.send <- message.Message
+				client.send <- message.Data
 			}
 		case message := <-h.readBuffer:
-			go h.receivedEvent(message)
+			go h.onMessage(message.Data, message.Client)
 		}
 	}
 }
 
-func (h *Hub) AddConnection(ws *websocket.Conn, roomId string) {
-	client := &Client{roomId: roomId, socket: ws, send: make(chan Message), hub: h}
+func (h *Hub) OnMessage(callback func(data []byte, client *Client)) {
+	h.onMessage = callback
+}
+
+func (h *Hub) AddConnection(ws *websocket.Conn) *Client {
+	client := &Client{socket: ws, send: make(chan []byte), hub: h}
 	go client.reader()
 	go client.writer()
 	h.register <- client
+	return client
 }
 
-func (h *Hub) receivedEvent(message BroadcastMessage) {
-	for _, event := range h.eventHandlers {
-		if event.Event == message.Event {
-			event.Callback(message.Data, message.roomId)
-		}
-	}
-}
-
-func (h *Hub) On(event string, callback func(data interface{}, roomId string)) {
-	h.eventHandlers = append(h.eventHandlers, EventHandler{event, callback})
-}
-
-func (h *Hub) Emit(event string, data interface{}, roomId string) {
-	h.broadcast <- BroadcastMessage{Message{event, data}, roomId}
+func (h *Hub) Emit(data []byte, channel string) {
+	h.broadcast <- BroadcastMessage{data, []string{channel}}
 }

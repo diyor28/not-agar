@@ -1,10 +1,11 @@
-package csbin
+package bytesIO
 
 import (
 	"bytes"
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"github.com/diyor28/not-agar/src/csbin/bitmask"
 	"math"
 )
 
@@ -187,33 +188,35 @@ func (r *BytesReader) ReadString() (string, error) {
 	return string(sBytes), nil
 }
 
-func (r *BytesReader) ReadBitmap() ([]byte, error) {
-	bitmapLen, err := r.ReadByte()
+func (r *BytesReader) ReadBitmask() (*bitmask.Bitmask, error) {
+	bitmaskLen, err := r.ReadByte()
 	if err != nil {
 		return nil, err
 	}
-	bitmap, err := r.ReadBytes(int(bitmapLen))
+	bBytes, err := r.ReadBytes(int(bitmaskLen))
 	if err != nil {
 		return nil, err
 	}
-	return bitmap, nil
+	bMask := bitmask.New()
+	bMask.SetBytes(bBytes)
+	return bMask, nil
 }
 
 type BytesWriter struct {
 	Bytes []byte
 }
 
-func (w BytesWriter) writeByte(b byte) {
+func (w *BytesWriter) WriteByte(b byte) {
 	w.Bytes = append(w.Bytes, b)
 }
 
-func (w BytesWriter) writeBytes(b []byte) {
+func (w *BytesWriter) WriteBytes(b []byte) {
 	w.Bytes = append(w.Bytes, b...)
 }
 
 func (w *BytesWriter) WriteString(s string) {
-	w.writeByte(uint8(len(s)))
-	w.writeBytes([]byte(s))
+	w.WriteByte(uint8(len(s)))
+	w.WriteBytes([]byte(s))
 }
 
 func (w *BytesWriter) Write(u interface{}) {
@@ -244,22 +247,22 @@ func (w *BytesWriter) Write(u interface{}) {
 }
 
 func (w *BytesWriter) WriteUint8(u uint8) {
-	w.writeByte(u)
+	w.WriteByte(u)
 }
 func (w *BytesWriter) WriteUint16(u uint16) {
 	b := make([]byte, 2)
 	binary.BigEndian.PutUint16(b, u)
-	w.writeBytes(b)
+	w.WriteBytes(b)
 }
 func (w *BytesWriter) WriteUint32(u uint32) {
 	b := make([]byte, 4)
 	binary.BigEndian.PutUint32(b, u)
-	w.writeBytes(b)
+	w.WriteBytes(b)
 }
 func (w *BytesWriter) WriteUint64(u uint64) {
 	b := make([]byte, 8)
 	binary.BigEndian.PutUint64(b, u)
-	w.writeBytes(b)
+	w.WriteBytes(b)
 }
 
 func (w *BytesWriter) WriteInt8(i int8) {

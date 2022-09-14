@@ -1,17 +1,19 @@
 package gamengine
 
 import (
+	"github.com/diyor28/not-agar/src/gamengine/entity"
+	"github.com/diyor28/not-agar/src/gamengine/player"
 	"github.com/diyor28/not-agar/src/utils"
 	"github.com/frankenbeanies/uuid4"
 )
 
 type Spike struct {
-	*Entity
+	*entity.Entity
 }
 
 func NewSpike(x float32, y float32, weight float32) *Spike {
 	spike := &Spike{
-		&Entity{
+		&entity.Entity{
 			Uuid: uuid4.New().String(),
 			X:    x,
 			Y:    y,
@@ -21,7 +23,7 @@ func NewSpike(x float32, y float32, weight float32) *Spike {
 	return spike
 }
 
-func (s *Spike) collided(player *Player) bool {
+func (s *Spike) collided(player *player.Player) bool {
 	plRadius := float64(player.Weight / 2)
 	sRadius := float64(s.Weight / 2)
 	dist := float64(utils.CalcDistance(s.X, player.X, s.Y, player.Y))
@@ -40,7 +42,7 @@ func (spikes Spikes) asValues() []Spike {
 	return result
 }
 
-func (spikes Spikes) closest(player *Player, kClosest int) []Spike {
+func (spikes Spikes) closest(player *player.Player, kClosest int) []Spike {
 	spikesCopy := spikes.asValues()
 	totalSpikes := len(spikesCopy)
 	spikeDistances := make(map[string]float32, totalSpikes)

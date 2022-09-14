@@ -1,7 +1,8 @@
-package gamengine
+package entity
 
 import (
 	"errors"
+	"github.com/diyor28/not-agar/src/gamengine"
 	"github.com/diyor28/not-agar/src/utils"
 )
 
@@ -13,25 +14,25 @@ type Entity struct {
 	surfaceArea float32
 }
 
-func (e *Entity) setWeight(weight float32) {
-	clippedWeight := utils.Clip(weight, MinWeight, MaxWeight)
+func (e *Entity) SetWeight(weight float32) {
+	clippedWeight := utils.Clip(weight, gamengine.MinWeight, gamengine.MaxWeight)
 	e.Weight = clippedWeight
 	e.surfaceArea = utils.SurfaceArea(weight / 2)
 }
 
-func (e *Entity) getWeight() float32 {
+func (e *Entity) GetWeight() float32 {
 	return e.Weight
 }
 
-func (e *Entity) getX() float32 {
+func (e *Entity) GetX() float32 {
 	return e.X
 }
 
-func (e *Entity) getY() float32 {
+func (e *Entity) GetY() float32 {
 	return e.Y
 }
 
-func (e *Entity) getXY() (float32, float32) {
+func (e *Entity) GetXY() (float32, float32) {
 	return e.X, e.Y
 }
 

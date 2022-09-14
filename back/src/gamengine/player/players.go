@@ -1,11 +1,21 @@
-package gamengine
+package player
 
 import (
 	"errors"
+	"github.com/diyor28/not-agar/src/gamengine"
+	"github.com/diyor28/not-agar/src/gamengine/constants"
+	"github.com/diyor28/not-agar/src/gamengine/entity"
+	"github.com/diyor28/not-agar/src/gamengine/food"
 	"github.com/diyor28/not-agar/src/utils"
 	"github.com/frankenbeanies/uuid4"
 	"math"
 )
+
+func getSpeedFromWeight(weight float32) float32 {
+	normalized := 1 - (weight-constants.MinWeight)/(constants.SpeedWeightLimit-constants.MinWeight)
+	newSpeed := float64(normalized*(constants.MaxSpeed-constants.MinSpeed) + constants.MinSpeed)
+	return float32(math.Max(newSpeed, constants.MinSpeed))
+}
 
 type SelfPlayer struct {
 	Uuid     string  `json:"uuid"`
@@ -20,7 +30,7 @@ type SelfPlayer struct {
 }
 
 type Player struct {
-	*Entity
+	*entity.Entity
 	Nickname     string  `json:"nickname"`
 	VelocityX    float32 `json:"-"`
 	VelocityY    float32 `json:"-"`
@@ -33,23 +43,23 @@ type Player struct {
 
 func NewPlayer(x float32, y float32, weight float32, nickname string, isBot bool) *Player {
 	player := &Player{
-		Entity: &Entity{
+		Entity: &entity.Entity{
 			Uuid: uuid4.New().String(),
 			X:    x,
 			Y:    y,
 		},
-		Speed:        MaxSpeed,
+		Speed:        constants.MaxSpeed,
 		Nickname:     nickname,
 		IsBot:        isBot,
 		Accelerating: false,
 		Zoom:         1,
-		Color:        randomColor(),
+		Color:        utils.RandomColor(),
 	}
-	player.setWeight(weight)
+	player.SetWeight(weight)
 	return player
 }
 
-func (pl *Player) getSelfPlayer() SelfPlayer {
+func (pl *Player) GetSelfPlayer() SelfPlayer {
 	return SelfPlayer{
 		Uuid:     pl.Uuid,
 		Nickname: pl.Nickname,
@@ -63,28 +73,28 @@ func (pl *Player) getSelfPlayer() SelfPlayer {
 	}
 }
 
-func (pl *Player) passiveWeightLoss() {
-	if pl.Weight > MinWeight*3 {
-		pl.setWeight(pl.Weight * 0.99999)
+func (pl *Player) PassiveWeightLoss() {
+	if pl.Weight > constants.MinWeight*3 {
+		pl.SetWeight(pl.Weight * 0.99999)
 	}
 }
 
-func (pl *Player) foodEatable(food *Food) bool {
+func (pl *Player) FoodEatable(food *food.Food) bool {
 	diff := utils.CalcDistance(pl.X, food.X, pl.Y, food.Y)
 	return diff < pl.Weight/2
 }
 
-func (pl *Player) updatePosition(gMap *GameMap) {
+func (pl *Player) UpdatePosition(gMap *gamengine.GameMap) {
 	speed := pl.Speed
 	newX := pl.X + speed*pl.VelocityX
 	newY := pl.Y + speed*pl.VelocityY
-	newZoom := (MinWeight/pl.Weight)*(MaxZoom-MinZoom) + MinZoom
-	pl.X = utils.Clip(newX, MinXY, MaxXY)
-	pl.Y = utils.Clip(newY, MinXY, MaxXY)
-	pl.Zoom = utils.Clip(newZoom, MinZoom, MaxZoom)
+	newZoom := (constants.MinWeight/pl.Weight)*(constants.MaxZoom-constants.MinZoom) + constants.MinZoom
+	pl.X = utils.Clip(newX, constants.MinXY, constants.MaxXY)
+	pl.Y = utils.Clip(newY, constants.MinXY, constants.MaxXY)
+	pl.Zoom = utils.Clip(newZoom, constants.MinZoom, constants.MaxZoom)
 }
 
-func (pl *Player) updateDirection(newX float32, newY float32) {
+func (pl *Player) UpdateDirection(newX float32, newY float32) {
 	dist := float64(utils.CalcDistance(pl.X, newX, pl.Y, newY))
 	diffX := float64(newX - pl.X)
 	diffY := float64(newY - pl.Y)
@@ -94,30 +104,30 @@ func (pl *Player) updateDirection(newX float32, newY float32) {
 	pl.VelocityY = float32(velocityY)
 }
 
-func (pl *Player) addWeight(weight float32) {
+func (pl *Player) AddWeight(weight float32) {
 	sign := float32(math.Copysign(1, float64(weight)))
 	nWeight := math.Sqrt(float64(pl.Weight*pl.Weight + weight*weight*sign))
-	pl.setWeight(float32(nWeight))
+	pl.SetWeight(float32(nWeight))
 }
 
-func (pl *Player) eatEntity(entity interface{ getWeight() float32 }) {
-	pl.addWeight(entity.getWeight())
+func (pl *Player) EatEntity(entity interface{ GetWeight() float32 }) {
+	pl.AddWeight(entity.GetWeight())
 }
 
-func (pl *Player) setWeight(weight float32) {
-	pl.Entity.setWeight(weight)
+func (pl *Player) SetWeight(weight float32) {
+	pl.Entity.SetWeight(weight)
 	pl.Speed = getSpeedFromWeight(pl.Weight)
 }
 
-func (pl *Player) makeMove(gameMap *GameMap) {
-	foods := gameMap.Foods.closest(pl, 1)
+func (pl *Player) MakeMove(gameMap *gamengine.GameMap) {
+	foods := gameMap.Foods.Closest(pl, 1)
 	closestFood := foods[0]
-	pl.updateDirection(closestFood.X, closestFood.Y)
+	pl.UpdateDirection(closestFood.X, closestFood.Y)
 }
 
 type Players []*Player
 
-func (players Players) get(uuid string) (*Player, error) {
+func (players Players) Get(uuid string) (*Player, error) {
 	for _, p := range players {
 		if p.Uuid == uuid {
 			return p, nil
@@ -126,7 +136,7 @@ func (players Players) get(uuid string) (*Player, error) {
 	return nil, errors.New("no player found")
 }
 
-func (players Players) asValues() []Player {
+func (players Players) AsValues() []Player {
 	var result []Player
 	for _, p := range players {
 		result = append(result, *p)
@@ -134,7 +144,7 @@ func (players Players) asValues() []Player {
 	return result
 }
 
-func (players Players) exclude(uuid string) Players {
+func (players Players) Exclude(uuid string) Players {
 	var result Players
 	for _, p := range players {
 		if p.Uuid != uuid {
@@ -144,8 +154,8 @@ func (players Players) exclude(uuid string) Players {
 	return result
 }
 
-func (players Players) largest(k int) []Player {
-	playersValues := players.asValues()
+func (players Players) Largest(k int) []Player {
+	playersValues := players.AsValues()
 	numOfPlayers := len(playersValues)
 	resultLength := k
 	if numOfPlayers < k {
@@ -163,8 +173,8 @@ func (players Players) largest(k int) []Player {
 	return playersValues[:resultLength]
 }
 
-func (players Players) closest(player *Player, kClosest int) Players {
-	otherPlayers := players.exclude(player.Uuid)
+func (players Players) Closest(player *Player, kClosest int) Players {
+	otherPlayers := players.Exclude(player.Uuid)
 	totalPlayers := len(otherPlayers)
 	playersDistances := make(map[string]float32, totalPlayers)
 	for _, p := range otherPlayers {
@@ -187,16 +197,16 @@ func (players Players) closest(player *Player, kClosest int) Players {
 	return otherPlayers[:numResults]
 }
 
-func (players Players) update(uuid string, newX float32, newY float32) (*Player, error) {
-	player, err := players.get(uuid)
+func (players Players) Update(uuid string, newX float32, newY float32) (*Player, error) {
+	player, err := players.Get(uuid)
 	if err != nil {
 		return nil, err
 	}
-	player.updateDirection(newX, newY)
+	player.UpdateDirection(newX, newY)
 	return player, nil
 }
 
-func (players Players) real() Players {
+func (players Players) Real() Players {
 	var result Players
 	for _, p := range players {
 		if !p.IsBot {
@@ -206,7 +216,7 @@ func (players Players) real() Players {
 	return result
 }
 
-func (players Players) bots() Players {
+func (players Players) Bots() Players {
 	var result Players
 	for _, p := range players {
 		if p.IsBot {
@@ -216,7 +226,7 @@ func (players Players) bots() Players {
 	return result
 }
 
-func (players Players) botsCount() int {
+func (players Players) BotsCount() int {
 	count := 0
 	for _, player := range players {
 		if player.IsBot {

@@ -1,6 +1,15 @@
 package utils
 
-import "math"
+import (
+	"math"
+	"math/rand"
+)
+
+var colors = [][3]int{{255, 21, 21}, {255, 243, 21}, {21, 87, 255}, {21, 255, 208}, {255, 21, 224}}
+
+func RandomColor() [3]int {
+	return colors[rand.Intn(len(colors))]
+}
 
 func CalcDistance(x1 float32, x2 float32, y1 float32, y2 float32) float32 {
 	return float32(math.Sqrt(math.Pow(float64(x1-x2), 2) + math.Pow(float64(y1-y2), 2)))

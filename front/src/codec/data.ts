@@ -188,7 +188,14 @@ export default class Data {
 		this.writeUInt8(b ? 1 : 0, explanation);
 	}
 
-	writeDouble(value: number, explanation?: string) {
+	writeFloat32(value: number, explanation?: string) {
+		this.alloc(4);
+		this.buffer.writeFloatBE(value, this.length);
+		this.length += 4;
+		this.explanations.push({bytes: 4, explanation});
+	}
+
+	writeFloat64(value: number, explanation?: string) {
 		this.alloc(8);
 		this.buffer.writeDoubleBE(value, this.length);
 		this.length += 8;
