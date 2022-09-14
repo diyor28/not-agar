@@ -1,11 +1,9 @@
-package player
+package players
 
 import (
 	"errors"
-	"github.com/diyor28/not-agar/src/gamengine"
 	"github.com/diyor28/not-agar/src/gamengine/constants"
-	"github.com/diyor28/not-agar/src/gamengine/entity"
-	"github.com/diyor28/not-agar/src/gamengine/food"
+	"github.com/diyor28/not-agar/src/gamengine/map/entity"
 	"github.com/diyor28/not-agar/src/utils"
 	"github.com/frankenbeanies/uuid4"
 	"math"
@@ -79,12 +77,12 @@ func (pl *Player) PassiveWeightLoss() {
 	}
 }
 
-func (pl *Player) FoodEatable(food *food.Food) bool {
-	diff := utils.CalcDistance(pl.X, food.X, pl.Y, food.Y)
+func (pl *Player) FoodEatable(food entity.Interface) bool {
+	diff := utils.CalcDistance(pl.X, food.GetX(), pl.Y, food.GetY())
 	return diff < pl.Weight/2
 }
 
-func (pl *Player) UpdatePosition(gMap *gamengine.GameMap) {
+func (pl *Player) UpdatePosition() {
 	speed := pl.Speed
 	newX := pl.X + speed*pl.VelocityX
 	newY := pl.Y + speed*pl.VelocityY
@@ -119,12 +117,6 @@ func (pl *Player) SetWeight(weight float32) {
 	pl.Speed = getSpeedFromWeight(pl.Weight)
 }
 
-func (pl *Player) MakeMove(gameMap *gamengine.GameMap) {
-	foods := gameMap.Foods.Closest(pl, 1)
-	closestFood := foods[0]
-	pl.UpdateDirection(closestFood.X, closestFood.Y)
-}
-
 type Players []*Player
 
 func (players Players) Get(uuid string) (*Player, error) {
@@ -133,7 +125,7 @@ func (players Players) Get(uuid string) (*Player, error) {
 			return p, nil
 		}
 	}
-	return nil, errors.New("no player found")
+	return nil, errors.New("no players found")
 }
 
 func (players Players) AsValues() []Player {

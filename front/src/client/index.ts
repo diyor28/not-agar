@@ -3,114 +3,151 @@ import {BinarySocket} from "./socket";
 import {StatsUpdate} from "../engine/GameEngine";
 import {FoodData, InitialData, MoveCommand, MovedEvent, PlayerData, SelfPlayerData, SpikeData} from "./types";
 
-export type {MovedEvent, SpikeData, SelfPlayerData, EntityData, MoveCommand, PlayerData, FoodData, InitialData} from './types';
+export type {
+	MovedEvent, SpikeData, SelfPlayerData, EntityData, MoveCommand, PlayerData, FoodData, InitialData
+} from './types';
+
+const genericSchema = new Schema({
+	event: 'string'
+})
 
 export default class GameClient {
 	ping: number | null = null;
 	socket: BinarySocket;
 	pingInterval: number
+	private onPongListeners: ((data: {ping: number}) => void)[] = [];
+
 	private schemas = {
-		ping: new Schema({
-			event: 'string',
-			timestamp: 'uint32'
+		ping: genericSchema.extends({
+			timestamp: 'uint64'
 		}),
-		move: new Schema({
-			event: 'string',
+		move: genericSchema.extends({
 			newX: 'uint16',
 			newY: 'uint16'
 		}),
-		moved: new Schema({
-			event: 'string',
+		moved: genericSchema.extends({
 			x: 'float32',
 			y: 'float32',
 			weight: 'float32',
 			zoom: 'float32'
 		}),
-		start: new Schema({
-			event: 'string',
+		start: genericSchema.extends({
 			nickname: 'string'
 		}),
-		started: new Schema({
-			event: 'string',
+		fUpdated: genericSchema.extends({
+			foods: [
+				{
+					x: 'float32',
+					y: 'float32',
+					weight: 'float32',
+					color: ['uint8']
+				}
+			]
+		}),
+		pUpdated: genericSchema.extends({
+			players: [
+				{
+					x: 'float32',
+					y: 'float32',
+					weight: 'float32',
+					nickname: 'string',
+					color: ['uint8']
+				},
+			]
+		}),
+		started: genericSchema.extends({
 			player: {
-				uuid: 'string',
-				nickname: 'string',
-				color: ['uint8'],
 				x: 'float32',
 				y: 'float32',
 				weight: 'float32',
-				speed: 'float32',
-				zoom: 'float32'
+				color: ['uint8']
 			},
 			spikes: [
 				{
-					uuid: 'string',
 					x: 'float32',
 					y: 'float32',
 					weight: 'float32'
 				}
 			]
-		})
+		}),
+		stats: genericSchema.extends({
+			topPlayers: [
+				{
+					nickname: 'string',
+					weight: 'int16'
+				}
+			]
+		}),
+		rip: genericSchema
 	};
 
 	constructor(url: string, pingInterval: number) {
-		this.pingInterval = pingInterval;
 		const schema = new Schema({event: 'string'});
+		this.pingInterval = pingInterval;
 		this.socket = new BinarySocket(url, schema);
+		console.log('socket initialized');
 		this.registerPongListener();
-		this.socket.onOpen(() => {
+		this.socket.onOpen((event) => {
+			console.log('onOpen called', event)
 			this.pingPong();
 		});
 	}
 
-	public startGame({nickname}: { nickname: string }): Promise<InitialData> {
+	onOpen(callback: (event: Event) => void) {
+		this.socket.onOpen(callback)
+	}
+
+	startGame({nickname}: { nickname: string }): Promise<InitialData> {
 		const schema = this.schemas.start;
-		this.socket.emit(schema.encode({event: 'start', nickname}));
+		this.socket.emit(schema.encode({event: 'start', nickname}).toBuffer());
 		return new Promise(resolve => this.socket.on('started', resolve, this.schemas.started));
 	}
 
-	public move(data: MoveCommand) {
+	move(data: MoveCommand) {
 		const schema = this.schemas.move;
-		this.socket.emit(schema.encode({event: 'move', ...data}));
+		this.socket.emit(schema.encode({event: 'move', ...data}).toBuffer());
 	}
 
-	public onMove(callback: (data: MovedEvent) => void) {
+	onMove(callback: (data: MovedEvent) => void) {
 		this.socket.on('moved', callback, this.schemas.moved);
 	}
 
-	public onPlayersUpdate(callback: (data: PlayerData[]) => void) {
-		// this.socket.on('pUpdated', callback, this.schemas)
+	onPlayersUpdate(callback: (data: { players: PlayerData[] }) => void) {
+		this.socket.on('pUpdated', callback, this.schemas.pUpdated);
 	}
 
-	public onFoodUpdate(callback: (data: FoodData[]) => void) {
-
+	onFoodUpdate(callback: (data: { foods: FoodData[] }) => void) {
+		this.socket.on('fUpdated', callback, this.schemas.fUpdated);
 	}
 
-	public onStatsUpdate(callback: (data: StatsUpdate[]) => void) {
-
+	onStatsUpdate(callback: (data: { topPlayers: StatsUpdate[] }) => void) {
+		this.socket.on('stats', callback, this.schemas.fUpdated);
 	}
 
-	public onPong(callback: (data: { ping: number }) => void) {
-
+	onPong(callback: (data: { ping: number }) => void) {
+		this.onPongListeners.push(callback);
 	}
 
-	public onRip(callback: () => void) {
-
+	onRip(callback: () => void) {
+		this.socket.on('rip', callback, this.schemas.rip);
 	}
 
 	private registerPongListener() {
 		const listener = (data: { timestamp: number }) => {
 			const currentTime = new Date().getTime();
 			const ping = currentTime - data.timestamp;
-			// this.onPong({ping});
 			this.ping = ping;
+			console.log('ping', ping);
+			this.onPongListeners.forEach(callback => {
+				callback({ping});
+			});
 		};
 		this.socket.on('pong', listener, this.schemas.ping);
 	}
 
 	private pingPong() {
 		const data = {timestamp: new Date().getTime()};
-		this.socket.emit(this.schemas.ping.encode({...data, event: 'ping'}))
+		this.socket.emit(this.schemas.ping.encode({event: 'ping', ...data}).toBuffer())
 		setTimeout(() => this.pingPong(), this.pingInterval);
 	}
 }

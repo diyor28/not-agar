@@ -111,16 +111,15 @@ export default class Game {
         this.selfPlayer.height = height;
     }
 
-    onStatsUpdate(data: StatsUpdate[]) {
-        this.stats = data;
+    onStatsUpdate(data: {topPlayers: StatsUpdate[]}) {
+        this.stats = data.topPlayers;
     }
 
-    playersUpdated(data: PlayerData[]) {
+    playersUpdated(data: {players: PlayerData[]}) {
         let cameraX = this.selfPlayer._x;
         let cameraY = this.selfPlayer._y;
-        let players = data || [];
         this.players = [];
-        players.forEach((player: PlayerData) => {
+        data.players.forEach((player: PlayerData) => {
             this.players.push(new Player({
                 x: player.x,
                 y: player.y,
@@ -133,12 +132,11 @@ export default class Game {
         })
     }
 
-    foodUpdated(data: FoodData[]) {
+    foodUpdated(data: {foods: FoodData[]}) {
         let cameraX = this.selfPlayer._x;
         let cameraY = this.selfPlayer._y;
-        let foods = data || [];
         this.foods = [];
-        foods.forEach((food: FoodData) => {
+        data.foods.forEach((food: FoodData) => {
             this.foods.push(new Food({
                 x: food.x,
                 y: food.y,

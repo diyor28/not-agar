@@ -2,6 +2,7 @@ package csbin
 
 import (
 	"errors"
+	"fmt"
 	"github.com/diyor28/not-agar/src/csbin/bytesIO"
 	"reflect"
 )
@@ -27,10 +28,14 @@ func (s *Schema) Extends(fields Fields) *Schema {
 }
 
 func (s *Schema) Encode(data interface{}) ([]byte, error) {
-	value := reflect.ValueOf(data).Elem()
+	value := reflect.ValueOf(data)
+	if value.Kind() != reflect.Ptr {
+		return nil, errors.New(fmt.Sprintf("expected pointer to struct or map, got %s", value.Kind().String()))
+	}
+	value = value.Elem()
 	writer := bytesIO.NewWriter()
 	if value.Kind() != reflect.Struct && value.Kind() != reflect.Map {
-		return nil, errors.New("provided value is not a struct or a map")
+		return nil, errors.New(fmt.Sprintf("expected struct or map, got %s", value.Kind().String()))
 	}
 	err := s.Fields.Encode(&value, writer)
 	if err != nil {
@@ -40,9 +45,13 @@ func (s *Schema) Encode(data interface{}) ([]byte, error) {
 }
 
 func (s *Schema) Decode(data []byte, result interface{}) error {
-	reflection := reflect.ValueOf(result).Elem()
+	reflection := reflect.ValueOf(result)
+	if reflection.Kind() != reflect.Ptr {
+		return errors.New(fmt.Sprintf("expected pointer to struct or map, got %s", reflection.Kind().String()))
+	}
+	reflection = reflection.Elem()
 	if reflection.Kind() != reflect.Struct && reflection.Kind() != reflect.Map {
-		return errors.New("provided value is not a struct or a map")
+		return errors.New(fmt.Sprintf("expected struct or map, got %s", reflection.Kind().String()))
 	}
 	reader := bytesIO.NewReader(data)
 	return s.Fields.Decode(&reflection, reader)

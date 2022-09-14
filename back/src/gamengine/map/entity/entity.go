@@ -2,9 +2,15 @@ package entity
 
 import (
 	"errors"
-	"github.com/diyor28/not-agar/src/gamengine"
+	"github.com/diyor28/not-agar/src/gamengine/constants"
 	"github.com/diyor28/not-agar/src/utils"
 )
+
+type Interface interface {
+	GetX() float32
+	GetY() float32
+	GetWeight() float32
+}
 
 type Entity struct {
 	Uuid        string  `json:"-"`
@@ -15,7 +21,7 @@ type Entity struct {
 }
 
 func (e *Entity) SetWeight(weight float32) {
-	clippedWeight := utils.Clip(weight, gamengine.MinWeight, gamengine.MaxWeight)
+	clippedWeight := utils.Clip(weight, constants.MinWeight, constants.MaxWeight)
 	e.Weight = clippedWeight
 	e.surfaceArea = utils.SurfaceArea(weight / 2)
 }
@@ -46,5 +52,5 @@ func (entities *Entities) GetItem(uuid string) (*Entity, error) {
 			return entities.Items[i], nil
 		}
 	}
-	return nil, errors.New("no player found")
+	return nil, errors.New("no players found")
 }

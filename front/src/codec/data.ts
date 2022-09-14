@@ -9,13 +9,13 @@ export const POW = (function () {
 })()
 
 // Pre-calculated constants
-export const MAX_DOUBLE_INT = POW[53],
-	MAX_UINT8 = POW[7],
-	MAX_UINT16 = POW[14],
-	MAX_UINT32 = POW[29],
-	MAX_INT8 = POW[6],
-	MAX_INT16 = POW[13],
-	MAX_INT32 = POW[28]
+export const MAX_DOUBLE_INT = POW[63],
+	MAX_UINT8 = POW[8],
+	MAX_UINT16 = POW[16],
+	MAX_UINT32 = POW[32],
+	MAX_INT8 = POW[7],
+	MAX_INT16 = POW[15],
+	MAX_INT32 = POW[31]
 
 
 /**
@@ -53,7 +53,7 @@ export default class Data {
 
 	writeUint(value: number, explanation?: string) {
 		if (Math.round(value) !== value || value > MAX_DOUBLE_INT || value < 0) {
-			throw new TypeError('Expected unsigned integer got ' + value);
+			throw new TypeError('Expected uint, got ' + value);
 		}
 
 		if (value < MAX_UINT8) {
@@ -73,7 +73,7 @@ export default class Data {
 
 	writeUInt8(value: number, explanation?: string) {
 		if (Math.round(value) !== value || value > MAX_UINT8 || value < 0) {
-			throw new TypeError('Expected unsigned integer got ' + value);
+			throw new TypeError('Expected uint8, got ' + value);
 		}
 		this.alloc(1);
 		this.buffer.writeUInt8(value, this.length);
@@ -83,7 +83,7 @@ export default class Data {
 
 	writeUInt16(value: number, explanation?: string) {
 		if (Math.round(value) !== value || value > MAX_UINT16 || value < 0) {
-			throw new TypeError('Expected unsigned integer got ' + value);
+			throw new TypeError('Expected uint16, got ' + value);
 		}
 		this.alloc(2);
 		this.buffer.writeUInt16BE(value, this.length);
@@ -93,7 +93,7 @@ export default class Data {
 
 	writeUInt32(value: number, explanation?: string) {
 		if (Math.round(value) !== value || value > MAX_UINT32 || value < 0) {
-			throw new TypeError('Expected unsigned integer got ' + value);
+			throw new TypeError('Expected uint32, got ' + value);
 		}
 		this.alloc(4);
 		this.buffer.writeUInt32BE(value, this.length);
@@ -102,12 +102,11 @@ export default class Data {
 	}
 
 	writeUInt64(value: number, explanation?: string) {
-		if (Math.round(value) !== value || value > MAX_DOUBLE_INT || value < 0) {
-			throw new TypeError('Expected unsigned integer got ' + value);
+		if (value > MAX_DOUBLE_INT || value < 0) {
+			throw new TypeError('Expected uint64, got ' + value);
 		}
 		this.writeUInt32(Math.floor(value / POW[32]) + 0xe0000000);
 		this.writeUInt32(value >>> 0);
-		this.length += 8;
 		this.explanations.push({bytes: 8, explanation});
 	}
 
@@ -133,7 +132,7 @@ export default class Data {
 
 	writeInt8(value: number, explanation?: string) {
 		if (Math.round(value) !== value || value > MAX_INT8 || value < - MAX_INT8) {
-			throw new TypeError('Expected signed integer got ' + value);
+			throw new TypeError('Expected int8, got ' + value);
 		}
 		this.alloc(1);
 		this.buffer.writeInt8(value, this.length);
@@ -143,7 +142,7 @@ export default class Data {
 
 	writeInt16(value: number, explanation?: string) {
 		if (Math.round(value) !== value || value > MAX_INT16 || value < - MAX_INT16) {
-			throw new TypeError('Expected signed integer got ' + value);
+			throw new TypeError('Expected int16, got ' + value);
 		}
 		this.alloc(2);
 		this.buffer.writeInt16BE(value, this.length);
@@ -153,7 +152,7 @@ export default class Data {
 
 	writeInt32(value: number, explanation?: string) {
 		if (Math.round(value) !== value || value > MAX_INT32 || value < - MAX_INT32) {
-			throw new TypeError('Expected signed integer got ' + value);
+			throw new TypeError('Expected int32, got ' + value);
 		}
 		this.alloc(4);
 		this.buffer.writeInt32BE(value, this.length);
@@ -163,7 +162,7 @@ export default class Data {
 
 	writeInt64(value: number, explanation?: string) {
 		if (Math.round(value) !== value || value > MAX_DOUBLE_INT || value < - MAX_DOUBLE_INT) {
-			throw new TypeError('Expected signed integer got ' + value);
+			throw new TypeError('Expected int64, got ' + value);
 		}
 		this.writeUInt32((Math.floor(value / POW[32]) & 0x1fffffff) + 0xe0000000);
 		this.writeUInt32(value >>> 0);

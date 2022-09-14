@@ -1,11 +1,15 @@
 package food
 
 import (
-	"github.com/diyor28/not-agar/src/gamengine/entity"
-	"github.com/diyor28/not-agar/src/gamengine/player"
+	"github.com/diyor28/not-agar/src/gamengine/map/entity"
 	"github.com/diyor28/not-agar/src/utils"
 	"github.com/frankenbeanies/uuid4"
 )
+
+type EntityInterface interface {
+	getX() float32
+	getY() float32
+}
 
 type Food struct {
 	*entity.Entity
@@ -35,12 +39,12 @@ func (foods Foods) asValues() []Food {
 	return result
 }
 
-func (foods Foods) Closest(player *player.Player, kClosest int) []Food {
+func (foods Foods) Closest(player entity.Interface, kClosest int) []Food {
 	foodCopy := foods.asValues()
 	totalNumFood := len(foodCopy)
 	foodDistances := make(map[string]float32, totalNumFood)
 	for _, f := range foodCopy {
-		foodDistances[f.Uuid] = utils.CalcDistance(player.X, f.X, player.Y, f.Y)
+		foodDistances[f.Uuid] = utils.CalcDistance(player.GetX(), f.X, player.GetY(), f.Y)
 	}
 	numResults := kClosest
 	if kClosest > totalNumFood {

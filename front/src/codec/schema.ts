@@ -4,13 +4,15 @@ import Data from "./data";
 import ReadState from "./readState";
 
 export default class Schema {
-	public fields: FieldsMap;
+	fields: FieldsMap;
+	schema: RecursiveTypeMapping;
 
-	constructor(type: RecursiveTypeMapping) {
-		if (typeof type !== 'object') {
-			throw new TypeError('Invalid type: ' + type)
+	constructor(schema: RecursiveTypeMapping) {
+		if (typeof schema !== 'object') {
+			throw new TypeError('Invalid type: ' + schema)
 		}
-		this.fields = new FieldsMap('', type);
+		this.fields = new FieldsMap('', schema);
+		this.schema = schema;
 	}
 
 	encode(value: any): Data {
@@ -21,6 +23,10 @@ export default class Schema {
 
 	decode(buffer: Buffer) {
 		return this.fields.read(new ReadState(buffer));
+	}
+
+	extends(schema: RecursiveTypeMapping) {
+		return new Schema({...this.schema, ...schema})
 	}
 }
 

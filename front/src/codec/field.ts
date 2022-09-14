@@ -13,7 +13,7 @@ export class FieldsMap {
 		});
 	}
 
-	calcBitmask(value: any) {
+	private calcBitmask(value: any) {
 		let bitmask = 0;
 		let bitmaskBits = 0;
 		for (const field of this.fields) {

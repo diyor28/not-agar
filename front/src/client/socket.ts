@@ -7,15 +7,15 @@ export class BaseSocket {
 
 	constructor(url: string) {
 		this.socket = new WebSocket(url);
-		this.socket.onmessage = this.handleMessage.bind(this);
 		this.socket.onopen = (event: Event) => {
 			this.openListeners.forEach(callback => {
 				callback(event)
 			})
 		}
+		this.socket.onmessage = this.handleMessage.bind(this);
 	}
 
-	onOpen(callback: () => void) {
+	onOpen(callback: (event: Event) => void) {
 		this.openListeners.push(callback)
 	}
 

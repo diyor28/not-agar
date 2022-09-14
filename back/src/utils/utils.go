@@ -1,12 +1,16 @@
 package utils
 
 import (
+	"github.com/diyor28/not-agar/src/gamengine/constants"
 	"math"
 	"math/rand"
 )
 
 var colors = [][3]int{{255, 21, 21}, {255, 243, 21}, {21, 87, 255}, {21, 255, 208}, {255, 21, 224}}
 
+func RandXY() (float32, float32) {
+	return float32(rand.Intn(constants.MaxXY)), float32(rand.Intn(constants.MaxXY))
+}
 func RandomColor() [3]int {
 	return colors[rand.Intn(len(colors))]
 }

@@ -1,9 +1,7 @@
 package main
 
 import (
-	"encoding/json"
 	"github.com/diyor28/not-agar/src/gamengine"
-	"github.com/diyor28/not-agar/src/gamengine/player"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 	"log"
@@ -27,20 +25,6 @@ func playerWS(w http.ResponseWriter, r *http.Request) {
 	}
 	client := gameMap.Hub.AddConnection(ws)
 	client.Join("anonymous")
-}
-
-func createPlayer(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
-	w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
-	w.Header().Set("Content-Type", "application/json")
-	if r.Method == "OPTIONS" {
-		return
-	}
-	var data player.Player
-	_ = json.NewDecoder(r.Body).Decode(&data)
-	result := gameMap.CreatePlayer(data.Nickname, false)
-	_ = json.NewEncoder(w).Encode(result)
 }
 
 func main() {
