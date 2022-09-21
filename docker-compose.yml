@@ -21,7 +21,7 @@ services:
     restart: always
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.notagar.rule=Host(`notagar.diyor28.com`) && Path(`/`)"
+      - "traefik.http.routers.notagar.rule=Host(`notagar.diyor28.com`) && !PathPrefix(`/api/`)"
       - "traefik.http.routers.notagar.tls=true"
     networks:
       - traefik
