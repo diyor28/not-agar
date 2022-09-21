@@ -14,10 +14,10 @@ RUN go mod download
 
 COPY . .
 
-RUN go build -o main .
+RUN go build -o main ./src
 
 WORKDIR /dist
 
-RUN cp /build/main ./src
+RUN cp /build/main .
 
 CMD ["/dist/main"]
