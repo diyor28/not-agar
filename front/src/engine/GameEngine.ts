@@ -56,7 +56,7 @@ export type StatsUpdate = {
 
 export default class Game {
     public players: Player[];
-    public foods: Food[];
+    public food: Food[];
     public spikes: Spike[];
     public stats: StatsUpdate[];
     public client: GameClient;
@@ -72,16 +72,16 @@ export default class Game {
         this.width = width;
         this.height = height;
         this.players = [];
-        this.foods = [];
+        this.food = [];
         this.stats = [];
         this.spikes = [];
         this._zoom = 1.0;
         this.socketUrl = process.env.REACT_APP_WS_URL as string;
         this.client = new GameClient(this.socketUrl, 1000);
-        this.client.onMove(data => this.onMoved(data));
-        this.client.onPlayersUpdate(data => this.playersUpdated(data));
-        this.client.onFoodUpdate(data => this.foodUpdated(data));
-        this.client.onStatsUpdate(data => this.onStatsUpdate(data));
+        this.client.onMove(this.onMoved.bind(this));
+        this.client.onPlayersUpdate(this.playersUpdated.bind(this));
+        this.client.onFoodUpdate(this.foodUpdated.bind(this));
+        this.client.onStatsUpdate(this.onStatsUpdate.bind(this));
         this.joystick = new JoyStick(width, height);
     }
 
@@ -95,7 +95,7 @@ export default class Game {
 
     async startGame({nickname}: { nickname: string }) {
         const {player, spikes} = await this.client.startGame({nickname});
-        this.selfPlayer = new SelfPlayer(player, this.height, this.width);
+        this.selfPlayer = new SelfPlayer({...player, nickname}, this.height, this.width);
         this.started = true;
         this.initSpikes(spikes);
     }
@@ -132,12 +132,12 @@ export default class Game {
         })
     }
 
-    foodUpdated(data: {foods: FoodData[]}) {
+    foodUpdated(data: {food: FoodData[]}) {
         let cameraX = this.selfPlayer._x;
         let cameraY = this.selfPlayer._y;
-        this.foods = [];
-        data.foods.forEach((food: FoodData) => {
-            this.foods.push(new Food({
+        this.food = [];
+        data.food.forEach((food: FoodData) => {
+            this.food.push(new Food({
                 x: food.x,
                 y: food.y,
                 cameraX,
@@ -201,7 +201,7 @@ export default class Game {
     }
 
     drawAll(p5: p5Types) {
-        this.foods.forEach(food => {
+        this.food.forEach(food => {
             food.draw(p5)
         })
         this.spikes.forEach(spike => {

@@ -5,55 +5,79 @@ import (
 	_map "github.com/diyor28/not-agar/src/gamengine/map"
 	"github.com/diyor28/not-agar/src/gamengine/map/food"
 	"github.com/diyor28/not-agar/src/gamengine/map/players"
+	"github.com/diyor28/not-agar/src/gamengine/map/players/shell"
 	"github.com/diyor28/not-agar/src/gamengine/map/spikes"
 	"reflect"
 )
 
-var playerField *csbin.Field = csbin.NewField("players", reflect.Struct, nil, csbin.Fields{
-	csbin.NewField("x", reflect.Float32, nil, nil),
-	csbin.NewField("y", reflect.Float32, nil, nil),
-	csbin.NewField("weight", reflect.Float32, nil, nil),
-	csbin.NewField("color", reflect.Slice, csbin.NewField("color", reflect.Uint8, nil, nil), nil),
-})
-var spikeField *csbin.Field = csbin.NewField("spike", reflect.Struct, nil, csbin.Fields{
-	csbin.NewField("x", reflect.Float32, nil, nil),
-	csbin.NewField("y", reflect.Float32, nil, nil),
-	csbin.NewField("weight", reflect.Float32, nil, nil),
-})
-var foodField *csbin.Field = csbin.NewField("food", reflect.Struct, nil, csbin.Fields{
-	csbin.NewField("x", reflect.Float32, nil, nil),
-	csbin.NewField("y", reflect.Float32, nil, nil),
-	csbin.NewField("weight", reflect.Float32, nil, nil),
-	csbin.NewField("color", reflect.Slice, csbin.NewField("color", reflect.Uint8, nil, nil), nil),
-})
+var playerField = csbin.NewField("player", reflect.Struct).SubFields(
+	csbin.NewField("x", reflect.Float32),
+	csbin.NewField("y", reflect.Float32),
+	csbin.NewField("weight", reflect.Float32),
+	csbin.NewField("nickname", reflect.String),
+	csbin.NewField("color", reflect.Array).SubType(csbin.NewField("color", reflect.Uint8)),
+)
 
-var GenericSchema *csbin.Schema = csbin.New(csbin.Fields{
-	csbin.NewField("event", reflect.String, nil, nil),
-})
+var spikeField = csbin.NewField("spike", reflect.Struct).SubFields(csbin.NewField("x", reflect.Float32),
+	csbin.NewField("y", reflect.Float32),
+	csbin.NewField("weight", reflect.Float32),
+)
+
+var foodField = csbin.NewField("food", reflect.Struct).SubFields(
+	csbin.NewField("x", reflect.Float32),
+	csbin.NewField("y", reflect.Float32),
+	csbin.NewField("weight", reflect.Float32),
+	csbin.NewField("color", reflect.Array).SubType(csbin.NewField("color", reflect.Uint8)),
+)
+
+var GenericSchema = csbin.New(
+	csbin.NewField("event", reflect.String),
+)
 
 type GenericEvent struct {
 	Event string
 }
 
-var StartSchema *csbin.Schema = GenericSchema.Extends(csbin.Fields{
-	csbin.NewField("nickname", reflect.String, nil, nil),
-})
+var PingPongSchema = GenericSchema.Extends(
+	csbin.NewField("timestamp", reflect.Uint64),
+)
 
-var StartedSchema *csbin.Schema = GenericSchema.Extends(csbin.Fields{
-	playerField,
-	csbin.NewField("spikes", reflect.Slice, spikeField, nil),
-})
+var StartSchema = GenericSchema.Extends(
+	csbin.NewField("nickname", reflect.String).MaxLen(255),
+)
+
+var StartedSchema = GenericSchema.Extends(
+	csbin.NewField("player", reflect.Struct).SubFields(
+		csbin.NewField("x", reflect.Float32),
+		csbin.NewField("y", reflect.Float32),
+		csbin.NewField("weight", reflect.Float32),
+		csbin.NewField("color", reflect.Array).SubType(csbin.NewField("color", reflect.Uint8)),
+		csbin.NewField("points", reflect.Slice).SubType(csbin.NewField("point", reflect.Struct).SubFields(
+			csbin.NewField("x", reflect.Float32),
+			csbin.NewField("y", reflect.Float32),
+		)),
+	),
+	csbin.NewField("spikes", reflect.Slice).SubType(spikeField),
+)
+
+type StartedEventPlayer struct {
+	X      float32
+	Y      float32
+	Weight float32
+	Color  [3]uint8
+	Points []*shell.Point
+}
 
 type StartedEvent struct {
 	Event  string
-	Player players.SelfPlayer
+	Player *StartedEventPlayer
 	Spikes spikes.Spikes
 }
 
-var MoveSchema *csbin.Schema = GenericSchema.Extends(csbin.Fields{
-	csbin.NewField("newX", reflect.Float32, nil, nil),
-	csbin.NewField("newY", reflect.Float32, nil, nil),
-})
+var MoveSchema = GenericSchema.Extends(
+	csbin.NewField("newX", reflect.Float32),
+	csbin.NewField("newY", reflect.Float32),
+)
 
 type MoveEvent struct {
 	Event string
@@ -61,51 +85,60 @@ type MoveEvent struct {
 	NewY  float32 `json:"newY"`
 }
 
-var MovedSchema *csbin.Schema = GenericSchema.Extends(csbin.Fields{
-	csbin.NewField("x", reflect.Float32, nil, nil),
-	csbin.NewField("y", reflect.Float32, nil, nil),
-	csbin.NewField("weight", reflect.Float32, nil, nil),
-	csbin.NewField("zoom", reflect.Float32, nil, nil),
-})
+var MovedSchema = GenericSchema.Extends(
+	csbin.NewField("x", reflect.Float32),
+	csbin.NewField("y", reflect.Float32),
+	csbin.NewField("weight", reflect.Float32),
+	csbin.NewField("velocityX", reflect.Float32),
+	csbin.NewField("velocityY", reflect.Float32),
+	csbin.NewField("zoom", reflect.Float32),
+	csbin.NewField("points", reflect.Slice).SubType(csbin.NewField("point", reflect.Struct).SubFields(
+		csbin.NewField("x", reflect.Float32),
+		csbin.NewField("y", reflect.Float32),
+	)),
+)
 
 type MovedEvent struct {
-	Event  string
-	X      float32
-	Y      float32
-	Weight float32
-	Zoom   float32
+	Event     string
+	X         float32
+	Y         float32
+	VelocityX float32
+	VelocityY float32
+	Weight    float32
+	Zoom      float32
+	Points    []*shell.Point
 }
 
-var PlayerStatsSchema *csbin.Schema = GenericSchema.Extends(csbin.Fields{
-	csbin.NewField("topPlayers", reflect.Slice, csbin.NewField("players", reflect.Struct, nil, csbin.Fields{
-		csbin.NewField("nickname", reflect.String, nil, nil),
-		csbin.NewField("weight", reflect.Int16, nil, nil),
-	}), nil),
-})
+var PlayerStatsSchema = GenericSchema.Extends(
+	csbin.NewField("topPlayers", reflect.Slice).SubType(csbin.NewField("players", reflect.Struct).SubFields(
+		csbin.NewField("nickname", reflect.String).MaxLen(255),
+		csbin.NewField("weight", reflect.Int16),
+	)),
+)
 
 type PlayerStatsEvent struct {
 	Event      string
 	TopPlayers []_map.PlayerStat
 }
 
-var AdminStatsSchema *csbin.Schema = GenericSchema.Extends(csbin.Fields{
-	csbin.NewField("botsCount", reflect.Uint16, nil, nil),
-	csbin.NewField("playersCount", reflect.Uint16, nil, nil),
-	csbin.NewField("topsPlayers", reflect.Slice, playerField, nil),
-})
+var AdminStatsSchema = GenericSchema.Extends(
+	csbin.NewField("botsCount", reflect.Uint16),
+	csbin.NewField("playersCount", reflect.Uint16),
+	csbin.NewField("topsPlayers", reflect.Slice).SubType(playerField),
+)
 
-var FoodUpdateSchema *csbin.Schema = GenericSchema.Extends(csbin.Fields{
-	csbin.NewField("foods", reflect.Slice, foodField, nil),
-})
+var FoodUpdateSchema = GenericSchema.Extends(
+	csbin.NewField("food", reflect.Slice).SubType(foodField),
+)
 
-type FoodUpdateEvent struct {
+type FoodUpdatedEvent struct {
 	Event string
-	Food  []food.Food
+	Food  []*food.Food
 }
 
-var PlayersUpdatedSchema *csbin.Schema = GenericSchema.Extends(csbin.Fields{
-	csbin.NewField("players", reflect.Slice, playerField, nil),
-})
+var PlayersUpdatedSchema = GenericSchema.Extends(
+	csbin.NewField("players", reflect.Slice).SubType(playerField),
+)
 
 type PlayersUpdatedEvent struct {
 	Event   string

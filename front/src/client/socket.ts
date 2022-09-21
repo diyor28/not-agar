@@ -1,22 +1,42 @@
 import {Schema} from "../codec";
 
 export class BaseSocket {
-	public readonly socket: WebSocket;
+	socket?: WebSocket;
+	url: string
 	protected openListeners: Function[] = [];
+	protected errorListeners: Function[] = [];
 	protected onMessageListeners: Function[] = [];
 
 	constructor(url: string) {
-		this.socket = new WebSocket(url);
+		this.url = url;
+	}
+
+	async connect(): Promise<Event> {
+		this.socket = new WebSocket(this.url);
+		const connectPromise = new Promise<Event>((resolve, reject) => {
+			this.onOpen(resolve)
+			this.onError(reject)
+		})
 		this.socket.onopen = (event: Event) => {
 			this.openListeners.forEach(callback => {
-				callback(event)
-			})
+				callback(event);
+			});
+		}
+		this.socket.onerror = (event: Event) => {
+			this.errorListeners.forEach(callback => {
+				callback(event);
+			});
 		}
 		this.socket.onmessage = this.handleMessage.bind(this);
+		return connectPromise
 	}
 
 	onOpen(callback: (event: Event) => void) {
-		this.openListeners.push(callback)
+		this.openListeners.push(callback);
+	}
+
+	onError(callback: (event: Event) => void) {
+		this.errorListeners.push(callback);
 	}
 
 	onMessage(callback: (data: ArrayBuffer | Record<string, any>) => void) {
@@ -24,17 +44,40 @@ export class BaseSocket {
 	}
 
 	close(code?: number, reason?: string) {
+		if (!this.socket)
+			throw new Error('Call socket.connect first')
 		this.socket.close(code, reason)
 	}
 
 	protected handleMessage(event: MessageEvent) {
-		this.onMessageListeners.forEach(callback => {
+		this.onMessageListeners.forEach(async callback => {
 			if (event.data instanceof ArrayBuffer) {
-				callback(event.data);
-			} else {
-				callback(JSON.parse(event.data));
+				return callback(event.data);
 			}
+
+			if (event.data instanceof Blob) {
+				const arrayBuffer = await this.blobToArrayBuffer(event.data);
+				return callback(arrayBuffer);
+			}
+
+			return callback(JSON.parse(event.data));
 		})
+	}
+
+	private blobToArrayBuffer(blob: Blob) {
+		const fileReader = new FileReader();
+		const result = new Promise<ArrayBuffer>((resolve, reject) => {
+			fileReader.onload = function (event) {
+				if (!event.target)
+					return reject(new Error('event.target is set null'));
+				const res = event.target.result;
+				if (!(res instanceof ArrayBuffer))
+					return reject(new Error('could not convert to ArrayBuffer'))
+				return resolve(res);
+			};
+		})
+		fileReader.readAsArrayBuffer(blob);
+		return result
 	}
 }
 
@@ -60,6 +103,8 @@ export class BinarySocket extends BaseSocket {
 	}
 
 	emit(data: ArrayBuffer | Buffer) {
+		if (!this.socket)
+			throw new Error('Call socket.connect first')
 		if (this.socket.readyState === WebSocket.CLOSED)
 			throw new Error('Socket closed');
 		if (this.socket.readyState === WebSocket.CONNECTING)
@@ -91,6 +136,8 @@ export class JsonSocket extends BaseSocket {
 	}
 
 	emit(event: string, data: any) {
+		if (!this.socket)
+			throw new Error('Call socket.connect first')
 		if (this.socket.readyState === WebSocket.CLOSED)
 			throw new Error('Socket closed');
 		if (this.socket.readyState === WebSocket.CONNECTING)

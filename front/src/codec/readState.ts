@@ -10,7 +10,7 @@ import {POW} from "./data";
 
 export default class ReadState {
 	offset = 0;
-	private readonly buffer: Buffer;
+	readonly buffer: Buffer;
 
 	constructor(buffer: Buffer) {
 		this.buffer = buffer;

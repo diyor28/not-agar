@@ -12,7 +12,29 @@ describe('Schema.encode', () => {
 		assert.strictEqual(decoded.event, 'update');
 	});
 
-	test('string, {uint8, uint8, uint8}, [{string, int32}]', () => {
+	test('encode/decode [string, int16]', () => {
+		const schema = new Schema({
+			event: 'string',
+			topPlayers: [{
+				nickname: 'string',
+				weight: 'int16'
+			}]
+		});
+		const data = schema.encode({
+			event: 'stats',
+			topPlayers: [{
+				nickname: 'demo',
+				weight: 300
+			}]
+		});
+		const decoded = schema.decode(data.toBuffer());
+		assert.strictEqual(data.toBuffer().toString('hex'), '01030005737461747300010103000464656d6f012c');
+		assert.strictEqual(decoded.event, 'stats');
+		assert.strictEqual(decoded.topPlayers[0].nickname, 'demo');
+		assert.strictEqual(decoded.topPlayers[0].weight, 300);
+	});
+
+	test('encode/decode string, {uint8, uint8, uint8}, [{string, int32}]', () => {
 		const schema = new Schema({
 			event: 'string',
 			player: {x: 'uint8', y: 'uint8', z: 'uint8'},

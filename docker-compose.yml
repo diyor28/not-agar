@@ -5,6 +5,8 @@ services:
     container_name: notagar_back
     build: ./back
     restart: always
+    networks:
+      - traefik
     ports:
       - "3100:3100"
 
@@ -12,5 +14,12 @@ services:
     container_name: notagar_front
     build: ./front
     restart: always
+    networks:
+      - traefik
     ports:
       - "3000:80"
+
+networks:
+  traefik:
+    name: traefik
+    external: true

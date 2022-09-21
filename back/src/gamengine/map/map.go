@@ -21,18 +21,17 @@ func New() *Map {
 
 type Map struct {
 	Players players.Players `json:"players"`
-	Foods   food.Foods      `json:"foods"`
+	Foods   food.Foods      `json:"food"`
 	Spikes  spikes.Spikes   `json:"spikes"`
 }
 
 func (m *Map) PopulateBots() {
-	//maxBots := (MaxPlayers - len(m.Players)) / 2
-	maxBots := 0
 	currentBots := m.Players.BotsCount()
-	if currentBots < maxBots {
-		for i := 0; i < maxBots; i++ {
-			m.CreatePlayer(randomname.GenerateNickname(), true)
-		}
+	if currentBots >= constants.MaxBots {
+		return
+	}
+	for i := 0; i < constants.MaxBots; i++ {
+		m.CreatePlayer(randomname.GenerateNickname(), true)
 	}
 }
 
@@ -98,7 +97,7 @@ func (m *Map) createRandomFood() *food.Food {
 	return m.createFood(x, y)
 }
 
-func (m *Map) CreatePlayer(nickname string, isBot bool) (players.SelfPlayer, spikes.Spikes) {
+func (m *Map) CreatePlayer(nickname string, isBot bool) (*players.Player, spikes.Spikes) {
 	x, y := utils.RandXY()
 	pl := players.NewPlayer(x, y, constants.MinWeight, nickname, isBot)
 	// TODO: better solution
@@ -106,7 +105,7 @@ func (m *Map) CreatePlayer(nickname string, isBot bool) (players.SelfPlayer, spi
 	//	m.removePlayerIndex(0)
 	//}
 	m.Players = append(m.Players, pl)
-	return pl.GetSelfPlayer(), m.Spikes
+	return pl, m.Spikes
 }
 
 func (m *Map) RemoveEatableFood() {
@@ -130,4 +129,45 @@ func (m *Map) SpikeCollisions(pl *players.Player) bool {
 		}
 	}
 	return false
+}
+
+func (m *Map) RemoveDeadPlayers() []*players.Player {
+	//take first players, compare it to every other players after it
+	//get a new array of players that
+	totalPlayers := len(m.Players)
+	for i := 0; i < totalPlayers; i++ {
+		p1 := m.Players[i]
+		if m.SpikeCollisions(p1) {
+			p1.IsDead = true
+		}
+		for k := i; k < totalPlayers; k++ {
+			p2 := m.Players[k]
+			if p2.IsDead {
+				continue
+			}
+			if p1.PlayerEatable(p2) {
+				p1.EatEntity(p2)
+				p2.IsDead = true
+			}
+
+			if p2.PlayerEatable(p1) {
+				p2.EatEntity(p1)
+				p1.IsDead = true
+			}
+		}
+	}
+	var newPlayers players.Players
+	var eatenPlayers []*players.Player
+	for index, pl := range m.Players {
+		if pl.IsDead {
+			if m.Players[index].IsBot {
+				continue
+			}
+			eatenPlayers = append(eatenPlayers, m.Players[index])
+		} else {
+			newPlayers = append(newPlayers, m.Players[index])
+		}
+	}
+	m.Players = newPlayers
+	return eatenPlayers
 }

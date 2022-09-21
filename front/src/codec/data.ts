@@ -105,9 +105,8 @@ export default class Data {
 		if (value > MAX_DOUBLE_INT || value < 0) {
 			throw new TypeError('Expected uint64, got ' + value);
 		}
-		this.writeUInt32(Math.floor(value / POW[32]) + 0xe0000000);
-		this.writeUInt32(value >>> 0);
-		this.explanations.push({bytes: 8, explanation});
+		this.writeUInt32(Math.floor(value / POW[32]) + 0xe0000000, explanation);
+		this.writeUInt32(value >>> 0, explanation);
 	}
 
 	writeInt(value: number, explanation?: string) {

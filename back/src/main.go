@@ -31,7 +31,7 @@ func main() {
 	processes := 4
 	log.Println("Setting max processes:", processes)
 	runtime.GOMAXPROCS(processes)
-	go gameMap.Run()
+	go gameMap.Run(50)
 	router := mux.NewRouter().StrictSlash(true)
 	router.HandleFunc("/player-ws", playerWS)
 	router.PathPrefix("/").Handler(http.FileServer(http.Dir("./static")))

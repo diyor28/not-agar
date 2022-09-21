@@ -11,23 +11,30 @@ type Schema struct {
 	Fields Fields
 }
 
-func New(fields Fields) *Schema {
+func New(fields ...*Field) *Schema {
 	return &Schema{Fields: fields}
 }
 
-func NewField(name string, primitiveType reflect.Kind, subType *Field, subFields Fields) *Field {
-	return &Field{Name: name, Type: primitiveType, SubType: subType, SubFields: subFields}
-}
-
-func (s *Schema) Extends(fields Fields) *Schema {
+func (s *Schema) Extends(fields ...*Field) *Schema {
 	combinedFields := s.Fields
 	for _, f := range fields {
 		combinedFields = append(combinedFields, f)
 	}
-	return New(combinedFields)
+	return New(combinedFields...)
 }
 
-func (s *Schema) Encode(data interface{}) ([]byte, error) {
+func (s *Schema) Add(fields ...*Field) *Schema {
+	s.Fields = append(s.Fields, fields...)
+	return s
+}
+
+func (s *Schema) NewField(name string, primitiveType reflect.Kind) *Field {
+	field := &Field{Name: name, loc: name, Type: primitiveType}
+	s.Fields = append(s.Fields, field)
+	return field
+}
+
+func (s *Schema) Encode(data interface{}) (*bytesIO.BytesWriter, error) {
 	value := reflect.ValueOf(data)
 	if value.Kind() != reflect.Ptr {
 		return nil, errors.New(fmt.Sprintf("expected pointer to struct or map, got %s", value.Kind().String()))
@@ -41,7 +48,7 @@ func (s *Schema) Encode(data interface{}) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return writer.Bytes, nil
+	return writer, nil
 }
 
 func (s *Schema) Decode(data []byte, result interface{}) error {

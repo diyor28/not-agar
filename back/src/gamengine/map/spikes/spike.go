@@ -26,7 +26,7 @@ func New(x float32, y float32, weight float32) *Spike {
 func (s *Spike) Collided(player *players.Player) bool {
 	plRadius := float64(player.Weight / 2)
 	sRadius := float64(s.Weight / 2)
-	dist := float64(utils.CalcDistance(s.X, player.X, s.Y, player.Y))
+	dist := float64(utils.Distance(s.X, player.X, s.Y, player.Y))
 	closeEnough := utils.IntersectionArea(plRadius, sRadius, dist)/utils.SurfaceArea64(sRadius) > 0.5
 	bigEnough := plRadius > sRadius
 	return closeEnough && bigEnough
@@ -47,7 +47,7 @@ func (spikes Spikes) closest(player *players.Player, kClosest int) []Spike {
 	totalSpikes := len(spikesCopy)
 	spikeDistances := make(map[string]float32, totalSpikes)
 	for _, s := range spikesCopy {
-		spikeDistances[s.Uuid] = utils.CalcDistance(player.X, s.X, player.Y, s.Y)
+		spikeDistances[s.Uuid] = utils.Distance(player.X, s.X, player.Y, s.Y)
 	}
 	numResults := kClosest
 	if kClosest > totalSpikes {
@@ -70,7 +70,7 @@ func (spikes Spikes) RandXY(minDistance float32) (float32, float32) {
 	for _, s := range spikes {
 		radius := s.Weight / 2
 		eX, eY := s.X, s.Y
-		dist := utils.CalcDistance(eX, x, eY, y)
+		dist := utils.Distance(eX, x, eY, y)
 		if dist-radius < minDistance {
 			return spikes.RandXY(minDistance)
 		}

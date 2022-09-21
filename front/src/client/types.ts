@@ -28,6 +28,7 @@ export interface SelfPlayerData {
 	weight: number
 	color: number[]
 	zoom: number
+	points: {x: number, y: number}[]
 }
 
 export interface MovedEvent {
@@ -35,6 +36,9 @@ export interface MovedEvent {
 	y: number
 	zoom: number
 	weight: number
+	velocityX: number
+	velocityY: number
+	points: {x: number, y: number}[]
 }
 
 export interface MoveCommand {

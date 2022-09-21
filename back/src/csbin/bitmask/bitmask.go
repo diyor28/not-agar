@@ -51,16 +51,16 @@ func (b *Bitmask) ToBytes() []byte {
 	return append([]byte{uint8(len(content))}, content...)
 }
 
-func (b *Bitmask) Has(i int) bool {
-	return (b.Bits>>uint64(i))&1 == 1
+func (b *Bitmask) Has(i int, fieldsCount int) bool {
+	return (b.Bits>>uint64(fieldsCount-1-i))&1 == 1
 }
 
-func (b *Bitmask) Set(i int, v bool) {
+func (b *Bitmask) Set(v bool) {
 	if v {
-		b.Bits |= 1 << uint64(i)
+		b.Bits <<= 1
+		b.Bits |= 1
 	} else {
-		var mask uint64 = ^(1 << uint64(i))
-		b.Bits &= mask
+		b.Bits <<= 1
 	}
 }
 

@@ -6,21 +6,38 @@ import (
 	"math/rand"
 )
 
-var colors = [][3]int{{255, 21, 21}, {255, 243, 21}, {21, 87, 255}, {21, 255, 208}, {255, 21, 224}}
+var colors = [][3]uint8{{255, 21, 21}, {255, 243, 21}, {21, 87, 255}, {21, 255, 208}, {255, 21, 224}}
 
 func RandXY() (float32, float32) {
 	return float32(rand.Intn(constants.MaxXY)), float32(rand.Intn(constants.MaxXY))
 }
-func RandomColor() [3]int {
+
+func RandomColor() [3]uint8 {
 	return colors[rand.Intn(len(colors))]
 }
 
-func CalcDistance(x1 float32, x2 float32, y1 float32, y2 float32) float32 {
-	return float32(math.Sqrt(math.Pow(float64(x1-x2), 2) + math.Pow(float64(y1-y2), 2)))
+func Square(x float32) float32 {
+	return x * x
 }
 
-func CalcDistance64(x1 float64, x2 float64, y1 float64, y2 float64) float64 {
-	return math.Sqrt(math.Pow(x1-x2, 2) + math.Pow(y1-y2, 2))
+func Square64(x float64) float64 {
+	return x * x
+}
+
+func Modulus(x1 float32, x2 float32, y1 float32, y2 float32) float32 {
+	return float32(Modulus64(float64(x1), float64(x2), float64(y1), float64(y2)))
+}
+
+func Modulus64(x1 float64, x2 float64, y1 float64, y2 float64) float64 {
+	return math.Sqrt(Square64(x2-x1) + Square64(y2-y1))
+}
+
+func Distance(x1 float32, x2 float32, y1 float32, y2 float32) float32 {
+	return Modulus(x1, x2, y1, y2)
+}
+
+func Distance64(x1 float64, x2 float64, y1 float64, y2 float64) float64 {
+	return Modulus64(x1, x2, y1, y2)
 }
 
 func Lerp() {
@@ -50,9 +67,9 @@ func IntersectionArea(r1 float64, r2 float64, dist float64) float64 {
 	if dist > math.Abs(r1+r2) {
 		return 0
 	}
-	dist1 := (r1*r1 - r2*r2 + dist*dist) / (2 * dist)
+	dist1 := (Square64(r1) - Square64(r2) + Square64(dist)) / (2 * dist)
 	dist2 := dist - dist1
-	h1 := math.Sqrt(r1*r1 - dist1*dist1)
-	h2 := math.Sqrt(r2*r2 - dist2*dist2)
-	return r1*r1*math.Acos(dist1/r1) - dist1*h1 + r2*r2*math.Acos(dist2/r2) - dist2*h2
+	h1 := math.Sqrt(Square64(r1) - Square64(dist1))
+	h2 := math.Sqrt(Square64(r2) - Square64(dist2))
+	return Square64(r1)*math.Acos(dist1/r1) - dist1*h1 + Square64(r2)*math.Acos(dist2/r2) - dist2*h2
 }

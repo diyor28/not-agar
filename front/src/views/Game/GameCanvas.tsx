@@ -31,9 +31,10 @@ export default class GameCanvas extends React.Component<any, any> {
     };
 
     onFill = async (data: { nickname: string }) => {
+        await this.game.client.connect();
         await this.game.startGame(data);
         this.game.client.onStatsUpdate((data) => {
-            this.setState({stats: data});
+            this.setState({stats: data.topPlayers});
         });
 
         this.game.client.onOpen(() => {

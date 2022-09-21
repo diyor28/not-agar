@@ -3,10 +3,12 @@ package bytesIO
 import (
 	"bytes"
 	"encoding/binary"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"github.com/diyor28/not-agar/src/csbin/bitmask"
 	"math"
+	"strings"
 )
 
 func NewReader(data []byte) *BytesReader {
@@ -60,6 +62,20 @@ func (r BytesReader) ReadUint(n int) (uint64, error) {
 		return r.ReadUint64()
 	}
 	return 0, errors.New(fmt.Sprintf("%d is not a valid size", n))
+}
+
+func (r *BytesReader) ReadBool() (bool, error) {
+	u, err := r.ReadByte()
+	if err != nil {
+		return false, err
+	}
+	if u == 0 {
+		return false, nil
+	}
+	if u == 1 {
+		return true, nil
+	}
+	return false, errors.New(fmt.Sprintf("expected 0 or 1, got: %d", u))
 }
 
 func (r *BytesReader) ReadUint8() (uint8, error) {
@@ -177,7 +193,7 @@ func (r *BytesReader) ReadFloat64() (float64, error) {
 }
 
 func (r *BytesReader) ReadString() (string, error) {
-	length, err := r.ReadByte()
+	length, err := r.ReadUint16()
 	if err != nil {
 		return "", nil
 	}
@@ -202,89 +218,148 @@ func (r *BytesReader) ReadBitmask() (*bitmask.Bitmask, error) {
 	return bMask, nil
 }
 
+type bytesExplanation struct {
+	bytes       int
+	explanation string
+}
+
 type BytesWriter struct {
-	Bytes []byte
+	bytes        []byte
+	explanations []*bytesExplanation
 }
 
-func (w *BytesWriter) WriteByte(b byte) {
-	w.Bytes = append(w.Bytes, b)
+func (w *BytesWriter) Bytes() []byte {
+	return w.bytes
 }
 
-func (w *BytesWriter) WriteBytes(b []byte) {
-	w.Bytes = append(w.Bytes, b...)
+func (w *BytesWriter) formattedHexString() string {
+	index := 0
+	hexString := hex.EncodeToString(w.bytes)
+	for _, explanation := range w.explanations {
+		index += explanation.bytes * 2
+		hexString = hexString[0:index] + "|" + hexString[index:]
+		index++
+	}
+	return hexString
 }
 
-func (w *BytesWriter) WriteString(s string) {
-	w.WriteByte(uint8(len(s)))
-	w.WriteBytes([]byte(s))
+func (w *BytesWriter) maxExpLength() int {
+	maxLen := 0
+	for _, explanation := range w.explanations {
+		if len(explanation.explanation) > maxLen {
+			maxLen = len(explanation.explanation)
+		}
+	}
+	return maxLen
 }
 
-func (w *BytesWriter) Write(u interface{}) {
+func (w *BytesWriter) Explain() string {
+	hexString := w.formattedHexString()
+	maxExpLength := w.maxExpLength()
+	explanation := "\n"
+	for i := 0; i < maxExpLength; i++ {
+		for _, exp := range w.explanations {
+			hexBytes := exp.bytes * 2
+			if len(exp.explanation) > i {
+				explanation += string(exp.explanation[i]) + strings.Repeat(" ", hexBytes-1) + "|"
+			} else {
+				explanation += strings.Repeat(" ", hexBytes) + "|"
+			}
+		}
+		explanation += "\n"
+	}
+	return hexString + explanation
+}
+
+func (w *BytesWriter) WriteByte(b byte, explanation string) {
+	w.bytes = append(w.bytes, b)
+	w.explanations = append(w.explanations, &bytesExplanation{1, explanation})
+}
+
+func (w *BytesWriter) WriteBytes(b []byte, explanation string) {
+	w.bytes = append(w.bytes, b...)
+	w.explanations = append(w.explanations, &bytesExplanation{len(b), explanation})
+}
+
+func (w *BytesWriter) WriteString(s string, explanation string) {
+	w.WriteUint16(uint16(len(s)), "string length")
+	w.WriteBytes([]byte(s), explanation)
+}
+
+func (w *BytesWriter) Write(u interface{}, explanation string) {
 	switch t := u.(type) {
 	case uint8:
-		w.WriteUint8(t)
+		w.WriteUint8(t, explanation)
 	case uint16:
-		w.WriteUint16(t)
+		w.WriteUint16(t, explanation)
 	case uint32:
-		w.WriteUint32(t)
+		w.WriteUint32(t, explanation)
 	case uint64:
-		w.WriteUint64(t)
+		w.WriteUint64(t, explanation)
 	case int8:
-		w.WriteInt8(t)
+		w.WriteInt8(t, explanation)
 	case int16:
-		w.WriteInt16(t)
+		w.WriteInt16(t, explanation)
 	case int32:
-		w.WriteInt32(t)
+		w.WriteInt32(t, explanation)
 	case int64:
-		w.WriteInt64(t)
+		w.WriteInt64(t, explanation)
 	case float32:
-		w.WriteFloat32(t)
+		w.WriteFloat32(t, explanation)
 	case float64:
-		w.WriteFloat64(t)
+		w.WriteFloat64(t, explanation)
 	case string:
-		w.WriteString(t)
+		w.WriteString(t, explanation)
 	}
 }
 
-func (w *BytesWriter) WriteUint8(u uint8) {
-	w.WriteByte(u)
+func (w *BytesWriter) WriteBool(b bool, explanation string) {
+	if b {
+		w.WriteByte(1, explanation)
+	} else {
+		w.WriteByte(0, explanation)
+	}
 }
-func (w *BytesWriter) WriteUint16(u uint16) {
+
+func (w *BytesWriter) WriteUint8(u uint8, explanation string) {
+	w.WriteByte(u, explanation)
+}
+func (w *BytesWriter) WriteUint16(u uint16, explanation string) {
 	b := make([]byte, 2)
 	binary.BigEndian.PutUint16(b, u)
-	w.WriteBytes(b)
+	w.WriteBytes(b, explanation)
 }
-func (w *BytesWriter) WriteUint32(u uint32) {
+func (w *BytesWriter) WriteUint32(u uint32, explanation string) {
 	b := make([]byte, 4)
 	binary.BigEndian.PutUint32(b, u)
-	w.WriteBytes(b)
+	w.WriteBytes(b, explanation)
 }
-func (w *BytesWriter) WriteUint64(u uint64) {
+func (w *BytesWriter) WriteUint64(u uint64, explanation string) {
 	b := make([]byte, 8)
 	binary.BigEndian.PutUint64(b, u)
-	w.WriteBytes(b)
+	w.WriteBytes(b, explanation)
 }
 
-func (w *BytesWriter) WriteInt8(i int8) {
-	w.WriteUint8(uint8(i))
+func (w *BytesWriter) WriteInt8(i int8, explanation string) {
+	w.WriteUint8(uint8(i), explanation)
 }
 
-func (w *BytesWriter) WriteInt16(i int16) {
-	w.WriteUint16(uint16(i))
+func (w *BytesWriter) WriteInt16(i int16, explanation string) {
+	w.WriteUint16(uint16(i), explanation)
 }
 
-func (w *BytesWriter) WriteInt32(i int32) {
-	w.WriteUint32(uint32(i))
+func (w *BytesWriter) WriteInt32(i int32, explanation string) {
+	w.WriteUint32(uint32(i), explanation)
 }
 
-func (w *BytesWriter) WriteInt64(i int64) {
-	w.WriteUint64(uint64(i))
+func (w *BytesWriter) WriteInt64(i int64, explanation string) {
+	w.WriteUint64(uint64(i), explanation)
 }
 
-func (w *BytesWriter) WriteFloat32(f float32) {
-	w.WriteUint32(math.Float32bits(f))
+func (w *BytesWriter) WriteFloat32(f float32, explanation string) {
+	w.WriteUint32(math.Float32bits(f), explanation)
 }
 
-func (w *BytesWriter) WriteFloat64(f float64) {
-	w.WriteUint64(math.Float64bits(f))
+func (w *BytesWriter) WriteFloat64(f float64, explanation string) {
+	w.WriteUint64(math.Float64bits(f), explanation)
 }

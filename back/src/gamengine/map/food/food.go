@@ -13,7 +13,7 @@ type EntityInterface interface {
 
 type Food struct {
 	*entity.Entity
-	Color [3]int `json:"color"`
+	Color [3]uint8 `json:"color"`
 }
 
 func New(x float32, y float32, weight float32) *Food {
@@ -31,20 +31,26 @@ func New(x float32, y float32, weight float32) *Food {
 
 type Foods []*Food
 
-func (foods Foods) asValues() []Food {
+func (food *Foods) asValues() []Food {
 	var result []Food
-	for _, f := range foods {
+	for _, f := range *food {
 		result = append(result, *f)
 	}
 	return result
 }
 
-func (foods Foods) Closest(player entity.Interface, kClosest int) []Food {
-	foodCopy := foods.asValues()
+func (food *Foods) Copy() []*Food {
+	result := make([]*Food, len(*food))
+	copy(result, *food)
+	return result
+}
+
+func (food *Foods) Closest(player entity.Interface, kClosest int) []*Food {
+	foodCopy := food.Copy()
 	totalNumFood := len(foodCopy)
 	foodDistances := make(map[string]float32, totalNumFood)
 	for _, f := range foodCopy {
-		foodDistances[f.Uuid] = utils.CalcDistance(player.GetX(), f.X, player.GetY(), f.Y)
+		foodDistances[f.Uuid] = utils.Distance(player.GetX(), f.X, player.GetY(), f.Y)
 	}
 	numResults := kClosest
 	if kClosest > totalNumFood {

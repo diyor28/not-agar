@@ -22,8 +22,9 @@ func NewGameMap() *GameEngine {
 	hub := sockethub.NewHub()
 	gameMap := _map.New()
 	engine := GameEngine{
-		Hub: hub,
-		Map: gameMap,
+		Hub:        hub,
+		Map:        gameMap,
+		PlayersMap: make(map[*sockethub.Client]string),
 	}
 	hub.OnMessage(func(data []byte, client *sockethub.Client) {
 		event := &GenericEvent{}
@@ -31,31 +32,39 @@ func NewGameMap() *GameEngine {
 			log.Println("GenericSchema.Decode(): ", err)
 			return
 		}
+		fmt.Println("received: ", event.Event)
 		switch event.Event {
 		case "move":
-			var moveEvent *MoveEvent
-			if err := MovedSchema.Decode(data, moveEvent); err != nil {
-				log.Println("MovedSchema.Decode(): ", err)
+			moveEvent := &MoveEvent{}
+			if err := MoveSchema.Decode(data, moveEvent); err != nil {
+				log.Println("MoveSchema.Decode(): ", err)
 				return
 			}
 			engine.HandleMoveEvent(moveEvent, client)
 		case "start":
-			var startEvent map[string]string
+			var startEvent = make(map[string]string)
 			if err := StartSchema.Decode(data, &startEvent); err != nil {
 				log.Println("StartSchema.Decode(): ", err)
 				return
 			}
-			player, spikes := engine.Map.CreatePlayer(startEvent["event"], false)
+			player, spikes := engine.Map.CreatePlayer(startEvent["nickname"], false)
+			engine.PlayersMap[client] = player.Uuid
 			startedEvent := &StartedEvent{
-				Event:  "started",
-				Player: player,
+				Event: "started",
+				Player: &StartedEventPlayer{
+					player.X,
+					player.Y,
+					player.Weight,
+					player.Color,
+					player.Shell.Points,
+				},
 				Spikes: spikes,
 			}
-			if bytes, err := StartedSchema.Encode(startedEvent); err != nil {
+			if data, err := StartedSchema.Encode(startedEvent); err != nil {
 				log.Println("StartedSchema.Encode(): ", err)
 				return
 			} else {
-				client.Emit(bytes)
+				client.Emit(data.Bytes())
 				client.Join(fmt.Sprintf("player/%s", player.Uuid))
 			}
 		case "ping":
@@ -74,47 +83,60 @@ func (eng *GameEngine) PlayerReverseLookUp(uuid string) (*sockethub.Client, erro
 	return nil, errors.New(fmt.Sprintf("no players for uuid %s found", uuid))
 }
 
-func (eng *GameEngine) HandleMoveEvent(data *MoveEvent, client *sockethub.Client) {
-	pl, err := eng.Map.Players.Update(eng.PlayersMap[client], data.NewX, data.NewY)
+func (eng *GameEngine) HandleMoveEvent(event *MoveEvent, client *sockethub.Client) {
+	pl, err := eng.Map.Players.Update(eng.PlayersMap[client], event.NewX, event.NewY)
 	if err != nil {
 		log.Println(err)
 		return
 	}
-	bytes, err := MovedSchema.Encode(&MovedEvent{"moved", pl.X, pl.Y, pl.Weight, pl.Zoom})
+	data, err := MovedSchema.Encode(&MovedEvent{
+		"moved",
+		pl.X,
+		pl.Y,
+		pl.VelocityX,
+		pl.VelocityY,
+		pl.Weight,
+		pl.Zoom,
+		pl.Shell.Points,
+	})
 	if err != nil {
 		log.Println(err)
 		return
 	}
-	client.Emit(bytes)
+	client.Emit(data.Bytes())
 }
 
 func (eng *GameEngine) SendPong(data []byte, client *sockethub.Client) {
-	client.Emit(data)
+	pingData := make(map[string]interface{})
+	if err := PingPongSchema.Decode(data, &pingData); err != nil {
+		log.Println("PingPongSchema.Decode(): ", err)
+		return
+	}
+	pongEvent := map[string]interface{}{"event": "pong", "timestamp": pingData["timestamp"]}
+	if data, err := PingPongSchema.Encode(&pongEvent); err != nil {
+		log.Println("PingPongSchema.Encode(): ", err)
+	} else {
+		client.Emit(data.Bytes())
+	}
 }
 
 func (eng *GameEngine) publishStats() {
-	for {
-		time.Sleep(2 * time.Second)
+	for range time.Tick(time.Duration(2000) * time.Millisecond) {
 		stats := eng.Map.GetStats()
 		statsEvent := &PlayerStatsEvent{
 			Event:      "stats",
 			TopPlayers: stats,
 		}
-		if bytes, err := PlayerStatsSchema.Encode(statsEvent); err != nil {
+		if data, err := PlayerStatsSchema.Encode(statsEvent); err != nil {
 			log.Println(err)
 		} else {
-			eng.notifyAllPlayers(bytes)
+			eng.notifyAllPlayers(data.Bytes())
 		}
 	}
 }
 
 func (eng *GameEngine) notifyAllPlayers(data []byte) {
-	for _, p := range eng.Map.Players.Real() {
-		client, err := eng.PlayerReverseLookUp(p.Uuid)
-		if err != nil {
-			log.Println(err)
-			continue
-		}
+	for client, _ := range eng.PlayersMap {
 		client.Emit(data)
 	}
 }
@@ -140,50 +162,64 @@ func (eng *GameEngine) notifyPlayer(pl *players.Player) error {
 		log.Println(err)
 		return err
 	}
-	movedEvent := &MovedEvent{"moved", pl.X, pl.Y, pl.Weight, pl.Zoom}
-	if bytes, err := MovedSchema.Encode(movedEvent); err != nil {
+	movedEvent := &MovedEvent{
+		"moved",
+		pl.X,
+		pl.Y,
+		pl.VelocityX,
+		pl.VelocityY,
+		pl.Weight,
+		pl.Zoom,
+		pl.Shell.Points,
+	}
+	if data, err := MovedSchema.Encode(movedEvent); err != nil {
 		log.Println(err)
 		return err
 	} else {
-		eng.Hub.Emit(bytes, pl.Uuid)
+		if err := client.Emit(data.Bytes()); err != nil {
+			pl.IsDead = true
+			delete(eng.PlayersMap, client)
+		}
 	}
 	plrs := eng.Map.Players.Closest(pl, constants.NumPlayersResponse)
-	plUpdateEvent := &PlayersUpdatedEvent{"pUpdated", plrs}
-	if bytes, err := PlayersUpdatedSchema.Encode(plUpdateEvent); err != nil {
+	plUpdateEvent := &PlayersUpdatedEvent{"players", plrs}
+	if data, err := PlayersUpdatedSchema.Encode(plUpdateEvent); err != nil {
 		log.Println(err)
 		return err
 	} else {
-		eng.Hub.Emit(bytes, pl.Uuid)
+		if err := client.Emit(data.Bytes()); err != nil {
+			pl.IsDead = true
+			delete(eng.PlayersMap, client)
+		}
 	}
-	foods := eng.Map.Foods.Closest(pl, constants.NumFoodResponse)
-	if bytes, err := FoodUpdateSchema.Encode(&FoodUpdateEvent{Event: "foodUpdated", Food: foods}); err != nil {
+	food := eng.Map.Foods.Closest(pl, constants.NumFoodResponse)
+	if data, err := FoodUpdateSchema.Encode(&FoodUpdatedEvent{Event: "food", Food: food}); err != nil {
 		return err
 	} else {
-		client.Emit(bytes)
+		if err := client.Emit(data.Bytes()); err != nil {
+			pl.IsDead = true
+			delete(eng.PlayersMap, client)
+		}
 	}
 	return nil
 }
 
 func (eng *GameEngine) MakeMove(pl *players.Player) {
-	foods := eng.Map.Foods.Closest(pl, 1)
-	closestFood := foods[0]
+	food := eng.Map.Foods.Closest(pl, 1)
+	closestFood := food[0]
 	pl.UpdateDirection(closestFood.X, closestFood.Y)
 }
 
-func (eng *GameEngine) Run() {
-	counter := 0
+func (eng *GameEngine) Run(framerate int) {
+	delta := time.Duration(1000/framerate) * time.Millisecond
 	go eng.publishStats()
 	go eng.Hub.Run()
 	go eng.Map.PopulateSpikes()
 	go eng.publishAdminStats()
-	for {
-		counter++
+	for range time.Tick(delta) {
+		eng.Map.PopulateFood()
+		eng.Map.PopulateBots()
 		var wg sync.WaitGroup
-		if counter > 30 {
-			counter = 0
-			eng.Map.PopulateFood()
-			eng.Map.PopulateBots()
-		}
 		for i := range eng.Map.Players {
 			wg.Add(1)
 			go func(i int) {
@@ -192,32 +228,37 @@ func (eng *GameEngine) Run() {
 				if pl.IsBot {
 					eng.MakeMove(pl)
 				}
-				pl.UpdatePosition()
+				pl.UpdatePosition(delta)
 				pl.PassiveWeightLoss()
 				if pl.IsBot {
 					return
 				}
-				if counter%2 == 0 {
-					err := eng.notifyPlayer(pl)
-					if err != nil {
-						log.Println("error when calling eng.notifyPlayer(): ", err)
-					}
+				err := eng.notifyPlayer(pl)
+				if err != nil {
+					log.Println("error when calling eng.notifyPlayer(): ", err)
 				}
 			}(i)
 		}
 		wg.Wait()
 		eng.Map.RemoveEatableFood()
 		eng.removeDeadPlayers()
-		time.Sleep(15 * time.Millisecond)
-		//fmt.Println("running loop")
 	}
 }
 
 func (eng *GameEngine) removeDeadPlayers() {
-	// take first players, compare it to every other players after it
-	// get a new array of players that
-	//for _, p := range eatenPlayers {
-	//	eng.Hub.Emit("rip", "", p.Uuid)
-	//}
-	//eng.Players = newPlayers
+	ripEvent := map[string]interface{}{"event": "rip"}
+	deadPlayers := eng.Map.RemoveDeadPlayers()
+	for _, pl := range deadPlayers {
+		client, err := eng.PlayerReverseLookUp(pl.Uuid)
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+		if data, err := GenericSchema.Encode(&ripEvent); err != nil {
+			log.Println(err)
+			continue
+		} else {
+			client.Emit(data.Bytes())
+		}
+	}
 }
