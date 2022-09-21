@@ -6,6 +6,7 @@ services:
     restart: always
     labels:
       - "traefik.enable=true"
+      - "traefik.http.services.notagar-back.loadbalancer.server.port=3100"
       - "traefik.http.routers.notagar-back.rule=Host(`notagar.diyor28.com`) && PathPrefix(`/api/`)"
       - "traefik.http.routers.notagar-back.tls=true"
       - "traefik.http.routers.notagar-back.middlewares=notagar-back-stripprefix"
