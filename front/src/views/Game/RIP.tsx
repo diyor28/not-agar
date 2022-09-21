@@ -6,7 +6,6 @@ export interface Props {
 }
 
 export default class RIP extends React.Component<Props, {}> {
-    apiUrl = process.env.REACT_APP_API_URL
     state = {
         nickname: ''
     };
