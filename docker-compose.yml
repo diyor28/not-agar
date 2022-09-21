@@ -2,7 +2,6 @@ version: '3.8'
 
 services:
   back:
-    container_name: notagar_back
     build: ./back
     restart: always
     networks:
@@ -11,13 +10,18 @@ services:
       - "3100:3100"
 
   front:
-    container_name: notagar_front
-    build: ./front
+    build:
+      context: ./front
+      target: production
     restart: always
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.notagar.rule=Host(`notagar.diyor28.com`)"
+      - "traefik.http.routers.notagar.tls=true" # secure using TLS.
     networks:
       - traefik
     ports:
-      - "3000:80"
+      - "80:80"
 
 networks:
   traefik:
