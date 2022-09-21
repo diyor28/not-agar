@@ -4,6 +4,12 @@ services:
   back:
     build: ./back
     restart: always
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.notagar-back.rule=Host(`notagar.diyor28.com`) && PathPrefix(`/api/`)"
+      - "traefik.http.routers.notagar-back.tls=true"
+      - "traefik.http.routers.notagar-back.middlewares=notagar-back-stripprefix"
+      - "traefik.http.middlewares.notagar-back-stripprefix.stripprefix.prefixes=/api"
     networks:
       - traefik
 
@@ -15,7 +21,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.notagar.rule=Host(`notagar.diyor28.com`)"
-      - "traefik.http.routers.notagar.tls=true" # secure using TLS.
+      - "traefik.http.routers.notagar.tls=true"
     networks:
       - traefik
 
