@@ -116,7 +116,6 @@ func (pl *Player) UpdatePosition(delta time.Duration) {
 		p.X = utils.Clip(pl.X+p.X, 0, constants.MaxXY) - pl.X
 		p.Y = utils.Clip(pl.Y+p.Y, 0, constants.MaxXY) - pl.Y
 	}
-	fmt.Println(pl.X, pl.Y, pl.DirectionX, pl.DirectionY, pl.VelocityX, pl.VelocityY, pl.Weight)
 }
 
 func (pl *Player) UpdateDirection(newX float32, newY float32) {

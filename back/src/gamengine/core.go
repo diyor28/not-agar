@@ -32,7 +32,6 @@ func NewGameMap() *GameEngine {
 			log.Println("GenericSchema.Decode(): ", err)
 			return
 		}
-		fmt.Println("received: ", event.Event)
 		switch event.Event {
 		case "move":
 			moveEvent := &MoveEvent{}
