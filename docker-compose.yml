@@ -6,8 +6,6 @@ services:
     restart: always
     networks:
       - traefik
-    ports:
-      - "3100:3100"
 
   front:
     build:
@@ -20,8 +18,6 @@ services:
       - "traefik.http.routers.notagar.tls=true" # secure using TLS.
     networks:
       - traefik
-    ports:
-      - "80:80"
 
 networks:
   traefik:
