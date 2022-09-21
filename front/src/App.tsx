@@ -1,7 +1,7 @@
 import React from 'react';
 import GameCanvas from "./views/Game/GameCanvas";
 
-class App extends React.Component {
+class App extends React.Component<any, any> {
     render() {
         return (
             <div className="App">

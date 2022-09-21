@@ -132,8 +132,6 @@ func (m *Map) SpikeCollisions(pl *players.Player) bool {
 }
 
 func (m *Map) RemoveDeadPlayers() []*players.Player {
-	//take first players, compare it to every other players after it
-	//get a new array of players that
 	totalPlayers := len(m.Players)
 	for i := 0; i < totalPlayers; i++ {
 		p1 := m.Players[i]

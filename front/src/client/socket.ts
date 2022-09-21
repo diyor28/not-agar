@@ -1,46 +1,52 @@
-import {Schema} from "../codec";
+import {EventBus} from "./eventBus";
 
-export class BaseSocket {
+export class SocketWrapper {
 	socket?: WebSocket;
 	url: string
-	protected openListeners: Function[] = [];
-	protected errorListeners: Function[] = [];
-	protected onMessageListeners: Function[] = [];
+	protected bus: EventBus;
 
 	constructor(url: string) {
 		this.url = url;
+		this.bus = new EventBus();
+	}
+
+	emit(data: ArrayBuffer | Buffer) {
+		if (!this.socket)
+			throw new Error('Call socket.connect first')
+		if (this.socket.readyState === WebSocket.CLOSED)
+			throw new Error('Socket closed');
+		if (this.socket.readyState === WebSocket.CONNECTING)
+			throw new Error('Socket connecting');
+		this.socket.send(data);
 	}
 
 	async connect(): Promise<Event> {
 		this.socket = new WebSocket(this.url);
 		const connectPromise = new Promise<Event>((resolve, reject) => {
-			this.onOpen(resolve)
-			this.onError(reject)
-		})
+			this.once('open', resolve);
+			this.once('error', reject);
+		});
 		this.socket.onopen = (event: Event) => {
-			this.openListeners.forEach(callback => {
-				callback(event);
-			});
+			this.bus.emit('open', event);
 		}
 		this.socket.onerror = (event: Event) => {
-			this.errorListeners.forEach(callback => {
-				callback(event);
-			});
+			this.bus.emit('error', event);
 		}
 		this.socket.onmessage = this.handleMessage.bind(this);
 		return connectPromise
 	}
 
-	onOpen(callback: (event: Event) => void) {
-		this.openListeners.push(callback);
+	once(event: 'open', callback: (data: Event) => void): void
+	once(event: 'error', callback: (data: Event) => void): void
+	once(event: 'open' | 'error', callback: (data: Event) => void): void {
+		this.bus.once(event, callback);
 	}
 
-	onError(callback: (event: Event) => void) {
-		this.errorListeners.push(callback);
-	}
-
-	onMessage(callback: (data: ArrayBuffer | Record<string, any>) => void) {
-		this.onMessageListeners.push(callback)
+	on(event: 'open', callback: (data: Event) => void): void
+	on(event: 'error', callback: (data: Event) => void): void
+	on(event: 'message', callback: (data: Buffer) => void): void
+	on(event: 'open' | 'error' | 'message', callback: ((data: Event) => void) | ((data: Buffer) => void)): void {
+		this.bus.on(event, callback);
 	}
 
 	close(code?: number, reason?: string) {
@@ -49,19 +55,17 @@ export class BaseSocket {
 		this.socket.close(code, reason)
 	}
 
-	protected handleMessage(event: MessageEvent) {
-		this.onMessageListeners.forEach(async callback => {
-			if (event.data instanceof ArrayBuffer) {
-				return callback(event.data);
-			}
+	protected async handleMessage(event: MessageEvent<Buffer | ArrayBuffer | Blob>) {
+		if (event.data instanceof ArrayBuffer) {
+			return this.bus.emit('message', Buffer.from(event.data));
+		}
 
-			if (event.data instanceof Blob) {
-				const arrayBuffer = await this.blobToArrayBuffer(event.data);
-				return callback(arrayBuffer);
-			}
+		if (event.data instanceof Blob) {
+			const arrayBuffer = await this.blobToArrayBuffer(event.data);
+			return this.bus.emit('message', Buffer.from(arrayBuffer));
+		}
 
-			return callback(JSON.parse(event.data));
-		})
+		return this.bus.emit('message', event.data);
 	}
 
 	private blobToArrayBuffer(blob: Blob) {
@@ -78,74 +82,5 @@ export class BaseSocket {
 		})
 		fileReader.readAsArrayBuffer(blob);
 		return result
-	}
-}
-
-export class BinarySocket extends BaseSocket {
-	schema: Schema;
-	protected eventListeners: { event: string, callback: (data: any) => void, schema: Schema }[] = [];
-
-	constructor(url: string, schema: Schema) {
-		super(url);
-		this.schema = schema;
-		this.onMessage((data) => {
-			if (!(data instanceof ArrayBuffer)) {
-				throw new Error(`Received ${typeof data} message in BinarySocket`);
-			}
-			const dataBuffer = Buffer.from(data);
-			const {event} = this.schema.decode(dataBuffer);
-			this.eventListeners.forEach(listener => {
-				if (listener.event === event) {
-					listener.callback(listener.schema.decode(dataBuffer));
-				}
-			})
-		})
-	}
-
-	emit(data: ArrayBuffer | Buffer) {
-		if (!this.socket)
-			throw new Error('Call socket.connect first')
-		if (this.socket.readyState === WebSocket.CLOSED)
-			throw new Error('Socket closed');
-		if (this.socket.readyState === WebSocket.CONNECTING)
-			throw new Error('Socket connecting');
-		this.socket.send(data);
-	}
-
-	on(event: string, callback: (data: any) => void, schema: Schema) {
-		this.eventListeners.push({event, callback, schema});
-	}
-}
-
-export class JsonSocket extends BaseSocket {
-	protected eventListeners: { event: string, callback: (data: any) => void }[] = [];
-
-	constructor(url: string) {
-		super(url);
-		this.onMessage((data) => {
-			if (data instanceof ArrayBuffer) {
-				throw new Error('Received ArrayBuffer in JsonSocket');
-			}
-			this.eventListeners.forEach(listener => {
-				if (listener.event === data.event) {
-					listener.callback(data.data);
-				}
-			})
-
-		})
-	}
-
-	emit(event: string, data: any) {
-		if (!this.socket)
-			throw new Error('Call socket.connect first')
-		if (this.socket.readyState === WebSocket.CLOSED)
-			throw new Error('Socket closed');
-		if (this.socket.readyState === WebSocket.CONNECTING)
-			throw new Error('Socket connecting');
-		this.socket.send(JSON.stringify({event, data}))
-	}
-
-	on(event: string, callback: (data: any) => void) {
-		this.eventListeners.push({event, callback})
 	}
 }

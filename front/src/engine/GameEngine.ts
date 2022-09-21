@@ -47,7 +47,7 @@ import Food from "./food";
 import p5Types from "p5";
 import Spike from "./spike"; //Import this for typechecking and intellisense
 import JoyStick from "./joystick";
-import GameClient, {FoodData, MovedEvent, PlayerData, SpikeData} from "../client";
+import {FoodData, GameClient, MovedEvent, PlayerData, SpikeData} from "../client";
 
 export type StatsUpdate = {
     weight: number,
@@ -78,10 +78,10 @@ export default class Game {
         this._zoom = 1.0;
         this.socketUrl = process.env.REACT_APP_WS_URL as string;
         this.client = new GameClient(this.socketUrl, 1000);
-        this.client.onMove(this.onMoved.bind(this));
-        this.client.onPlayersUpdate(this.playersUpdated.bind(this));
-        this.client.onFoodUpdate(this.foodUpdated.bind(this));
-        this.client.onStatsUpdate(this.onStatsUpdate.bind(this));
+        this.client.on('moved', this.onMoved.bind(this));
+        this.client.on('players', this.playersUpdated.bind(this));
+        this.client.on('food', this.foodUpdated.bind(this));
+        this.client.on('stats', this.onStatsUpdate.bind(this));
         this.joystick = new JoyStick(width, height);
     }
 

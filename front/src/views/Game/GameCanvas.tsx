@@ -6,23 +6,14 @@ import Ping from "./Ping";
 import RIP from "./RIP";
 import CreatePlayerModal from "./CreatePlayerModal";
 import Tips from "./Tips";
-import {Schema} from "../../codec";
+import {EventBus} from "../../client";
 
 let height = window.innerHeight - 10;
 let width = window.innerWidth - 10;
-// const frameRate = 40
 
 export default class GameCanvas extends React.Component<any, any> {
     game = new Game(width, height);
-    // game = new Game(width, height, {
-    //     uuid: "2423423",
-    //     color: [255, 0, 255],
-    //     nickname: "",
-    //     weight: 40,
-    //     x: 3000,
-    //     y: 3000,
-    //     zoom: 1.0
-    // })
+    eventBus = new EventBus();
     state = {
         show: false,
         stats: [],
@@ -30,23 +21,22 @@ export default class GameCanvas extends React.Component<any, any> {
         ping: null
     };
 
-    onFill = async (data: { nickname: string }) => {
+    createPlayer = async (data: { nickname: string }) => {
         await this.game.client.connect();
         await this.game.startGame(data);
-        this.game.client.onStatsUpdate((data) => {
+        this.game.client.on('stats', (data) => {
             this.setState({stats: data.topPlayers});
         });
 
-        this.game.client.onOpen(() => {
+        this.game.client.on('open', () => {
             this.setState({socketOpen: true})
         });
 
-        this.game.client.onPong(({ping}) => {
+        this.game.client.on('pong', ({ping}) => {
             this.setState({ping});
         });
 
-        this.game.client.onRip(() => {
-            // game.socket.close()
+        this.game.client.once('rip', () => {
             this.setState({show: true})
         });
     }
@@ -55,7 +45,8 @@ export default class GameCanvas extends React.Component<any, any> {
     render() {
         return (
             <div>
-                <CreatePlayerModal onFill={this.onFill}/>
+                <CreatePlayerModal eventBus={this.eventBus} createPlayer={this.createPlayer}/>
+                {/*<PlayButton eventBus={this.eventBus}/>*/}
                 <Ping ping={this.state.ping}/>
                 <RIP show={this.state.show}/>
                 <Tips/>
