@@ -18,6 +18,6 @@ RUN go build -o main .
 
 WORKDIR /dist
 
-RUN cp /build/main .
+RUN cp /build/main ./src
 
 CMD ["/dist/main"]
