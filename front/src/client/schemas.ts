@@ -20,34 +20,39 @@ export const movedSchema = genericSchema.extends({
 	velocityX: 'float32',
 	velocityY: 'float32',
 	zoom: 'float32',
-	points: [{x: 'float32', y: 'float32'}]
+	points: {
+		type: 'array',
+		of: {x: 'float32', y: 'float32'}
+	}
 });
 
 export const startSchema = genericSchema.extends({
-	nickname: 'string'
+	nickname: {type: 'string'}
 });
 
 export const foodSchema = genericSchema.extends({
-	food: [
-		{
+	food: {
+		type: 'array',
+		of: {
 			x: 'float32',
 			y: 'float32',
 			weight: 'float32',
-			color: ['uint8']
+			color: {type: 'array', of: 'uint8', length: 3}
 		}
-	]
+	}
 });
 
 export const playersSchema = genericSchema.extends({
-	players: [
-		{
+	players: {
+		type: 'array',
+		of: {
 			x: 'float32',
 			y: 'float32',
 			weight: 'float32',
 			nickname: 'string',
-			color: ['uint8']
-		},
-	]
+			color: {type: 'array', of: 'uint8', length: 3}
+		}
+	}
 });
 
 export const startedSchema = genericSchema.extends({
@@ -55,25 +60,30 @@ export const startedSchema = genericSchema.extends({
 		x: 'float32',
 		y: 'float32',
 		weight: 'float32',
-		color: ['uint8'],
-		points: [{x: 'float32', y: 'float32'}]
+		color: {type: 'array', of: 'uint8'},
+		points: {
+			type: 'array',
+			of: {x: 'float32', y: 'float32'}
+		}
 	},
-	spikes: [
-		{
+	spikes: {
+		type: 'array',
+		of: {
 			x: 'float32',
 			y: 'float32',
 			weight: 'float32'
 		}
-	]
+	}
 });
 
 export const statsSchema = genericSchema.extends({
-	topPlayers: [
-		{
+	topPlayers: {
+		type: 'array',
+		of: {
 			nickname: 'string',
 			weight: 'int16'
 		}
-	]
+	}
 });
 
 export const ripSchema = genericSchema;

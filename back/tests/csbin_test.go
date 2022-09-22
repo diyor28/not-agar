@@ -46,7 +46,7 @@ func TestCodecEncodeDecode(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	expected := append([]byte{1, 1, 0, 6}, []byte("update")...)
+	expected := append([]byte{0, 6}, []byte("update")...)
 	if !bytes.Equal(encoded, expected) {
 		t.Error("expected: ", expected, "got: ", encoded)
 		return
@@ -69,7 +69,7 @@ func TestCodecEncodeDecodeMap(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	expected := append([]byte{1, 1, 0, 6}, []byte("update")...)
+	expected := append([]byte{0, 6}, []byte("update")...)
 	if !bytes.Equal(encoded, expected) {
 		t.Error("expected: ", expected, "got: ", encoded)
 	}
@@ -88,7 +88,7 @@ func TestCodecDecodeMapFromHex(t *testing.T) {
 		csbin.NewField("event", reflect.String),
 		csbin.NewField("nickname", reflect.String),
 	)
-	encoded, err := hex.DecodeString("010300057374617274000464656d6f")
+	encoded, err := hex.DecodeString("00057374617274000464656d6f")
 	if err != nil {
 		t.Error(err)
 		return
@@ -112,7 +112,7 @@ func TestCodecUint64Decode(t *testing.T) {
 		csbin.NewField("event", reflect.String),
 		csbin.NewField("timestamp", reflect.Uint64),
 	)
-	encoded, err := hex.DecodeString("0103000470696e67de0b6b3a76400000")
+	encoded, err := hex.DecodeString("000470696e67de0b6b3a76400000")
 	if err != nil {
 		t.Error(err)
 		return
@@ -146,7 +146,7 @@ func TestCodecMixedTypesDecode(t *testing.T) {
 		csbin.NewField("player", reflect.Struct).UseStruct(&Player{}).SubFields(
 			csbin.NewField("x", reflect.Uint8),
 			csbin.NewField("y", reflect.Uint8),
-			csbin.NewField("z", reflect.Uint8),
+			csbin.NewField("z", reflect.Uint8).Optional(),
 		),
 		csbin.NewField("stats", reflect.Slice).SubType(
 			csbin.NewField("stat", reflect.Struct).UseStruct(&Stat{}).SubFields(
@@ -154,7 +154,7 @@ func TestCodecMixedTypesDecode(t *testing.T) {
 				csbin.NewField("score", reflect.Int32),
 			)),
 	)
-	encoded, err := hex.DecodeString("0107000675706461746501060a0c0001010300073433323134326300000020")
+	encoded, err := hex.DecodeString("000675706461746501060a0c000100073433323134326300000020")
 	if err != nil {
 		t.Error(err)
 		return
@@ -203,8 +203,8 @@ func TestCodecArrayTypeEncode(t *testing.T) {
 	}
 	encoded := writer.Bytes()
 	hexString := hex.EncodeToString(encoded)
-	if hexString != "010100037f3269" {
-		t.Error(fmt.Sprintf("expected: 010100037f3269 \ngot: %s", hexString))
+	if hexString != "00037f3269" {
+		t.Error(fmt.Sprintf("expected: 00037f3269 \ngot: %s", hexString))
 	}
 }
 
@@ -224,7 +224,7 @@ func TestCodecMixedTypesEncode(t *testing.T) {
 		csbin.NewField("player", reflect.Struct).UseStruct(&Player{}).SubFields(
 			csbin.NewField("x", reflect.Uint8),
 			csbin.NewField("y", reflect.Uint8),
-			csbin.NewField("z", reflect.Uint8),
+			csbin.NewField("z", reflect.Uint8).Optional(),
 		),
 		csbin.NewField("stats", reflect.Slice).SubType(
 			csbin.NewField("stat", reflect.Struct).UseStruct(&Stat{}).SubFields(
@@ -248,7 +248,7 @@ func TestCodecMixedTypesEncode(t *testing.T) {
 		return
 	}
 	hexString := hex.EncodeToString(encoded)
-	if hexString != "0107000675706461746501060a0c0001010300073433323134326300000020" {
-		t.Error(fmt.Sprintf("expected: 0107000675706461746501060a0c0001010300073433323134326300000020 \ngot: %s", hexString))
+	if hexString != "000675706461746501060a0c000100073433323134326300000020" {
+		t.Error(fmt.Sprintf("expected: 000675706461746501060a0c0001010300073433323134326300000020 \ngot: %s", hexString))
 	}
 }

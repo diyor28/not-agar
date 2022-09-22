@@ -12,6 +12,7 @@ import (
 type Field struct {
 	Name       string
 	Type       reflect.Kind
+	optional   bool
 	loc        string
 	structType *reflect.Type
 	subType    *Field
@@ -29,6 +30,11 @@ func (f *Field) Len(exactLen uint64) *Field {
 		panic(fmt.Sprintf("type %s does not support Len()", f.Type.String()))
 	}
 	f.len = exactLen
+	return f
+}
+
+func (f *Field) Optional() *Field {
+	f.optional = true
 	return f
 }
 
@@ -75,7 +81,7 @@ func (f *Field) SubFields(fields ...*Field) *Field {
 	return f
 }
 
-func (f *Fields) Encode(reflection *reflect.Value, writer *bytesIO.BytesWriter) error {
+func (f *Fields) writeBitmask(reflection *reflect.Value, writer *bytesIO.BytesWriter) error {
 	bMask := bitmask.New()
 	for _, field := range *f {
 		var fieldName string
@@ -98,6 +104,24 @@ func (f *Fields) Encode(reflection *reflect.Value, writer *bytesIO.BytesWriter) 
 		}
 	}
 	writer.WriteBytes(bMask.ToBytes(), "bitmask")
+	return nil
+}
+
+func (f *Fields) hasOptionalFields() bool {
+	for _, field := range *f {
+		if field.optional {
+			return true
+		}
+	}
+	return false
+}
+
+func (f *Fields) Encode(reflection *reflect.Value, writer *bytesIO.BytesWriter) error {
+	if f.hasOptionalFields() {
+		if err := f.writeBitmask(reflection, writer); err != nil {
+			return err
+		}
+	}
 
 	for _, field := range *f {
 		var fieldName string
@@ -124,12 +148,16 @@ func (f *Fields) Encode(reflection *reflect.Value, writer *bytesIO.BytesWriter) 
 }
 
 func (f *Fields) Decode(reflection *reflect.Value, reader *bytesIO.BytesReader) error {
-	bMask, err := reader.ReadBitmask()
-	if err != nil {
-		return err
+	var bMask *bitmask.Bitmask
+	var err error
+	if f.hasOptionalFields() {
+		bMask, err = reader.ReadBitmask()
+		if err != nil {
+			return err
+		}
 	}
 	for i, field := range *f {
-		if !bMask.Has(i, len(*f)) {
+		if bMask != nil && !bMask.Has(i, len(*f)) {
 			continue
 		}
 		var fieldName string

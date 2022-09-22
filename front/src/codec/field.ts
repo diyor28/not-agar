@@ -1,15 +1,20 @@
-import {ExtendedPrimitiveType, FieldType, RecursiveTypeMapping} from "./types";
+import {ExtendedPrimitiveType, isVarSizeTypeConf, StrictFieldType, StrictSchemaType, StrictTypeConf} from "./types";
 import Data from "./data";
 import ReadState from "./readState";
+
+function isStrictTypeConf(field: any): field is StrictTypeConf<any> {
+	return typeof field === 'object' && field.type
+}
 
 export class FieldsMap {
 	loc: string;
 	fields: Field[];
 
-	constructor(loc: string, type: RecursiveTypeMapping) {
+	constructor(loc: string, type: StrictSchemaType) {
 		this.loc = loc;
 		this.fields = Object.keys(type).map(key => {
-			return new Field(key, type[key], loc ? loc + '.' + key : key);
+			const subType = type[key];
+			return new Field(key, subType, loc ? loc + '.' + key : key);
 		});
 	}
 
@@ -78,27 +83,32 @@ export class FieldsMap {
 export default class Field {
 	name: string;
 	loc: string;
-	array: boolean;
+	optional = false;
+	len = 0;
+	maxLen = 0;
 	type: ExtendedPrimitiveType
 	subType: Field | null = null;
 	subFields: FieldsMap | null = null;
 
-	constructor(name: string, type: FieldType, loc: string) {
+	constructor(name: string, field: StrictFieldType, loc: string) {
 		this.name = name;
 		this.loc = loc;
-		this.array = Array.isArray(type);
+		if (isVarSizeTypeConf(field)) {
+			this.len = field.length;
+			this.maxLen = field.maxLen;
+		}
 
-		if (Array.isArray(type)) {
-			if (type.length !== 1) {
-				throw new TypeError(`Invalid array type for ${loc}, it must have exactly one element`);
-			}
-			this.type = 'array';
-			this.subType = new Field(name, type[0], `${loc}[]`);
-		} else if (typeof type === 'object') {
+		if (!isStrictTypeConf(field)) {
 			this.type = 'object';
-			this.subFields = new FieldsMap(loc, type);
+			this.subFields = new FieldsMap(loc, field);
+		} else if (field.type === 'array') {
+			this.type = 'array';
+			this.subType = new Field(name, field.of, `${loc}[]`);
+		} else if (field.type === 'object') {
+			this.type = 'object';
+			this.subFields = new FieldsMap(loc, field.of);
 		} else {
-			this.type = type;
+			this.type = field.type;
 		}
 	}
 

@@ -18,6 +18,6 @@ const (
 	StatsNumber                = 10
 	NumFoodResponse            = 30
 	NumPlayersResponse         = 10
-	MaxBots                    = 0
+	MaxBots                    = 20
 	SpikesSpacing              = MaxXY/MaxSpikes + SpikeWeight
 )
