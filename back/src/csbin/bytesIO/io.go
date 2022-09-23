@@ -192,10 +192,22 @@ func (r *BytesReader) ReadFloat64() (float64, error) {
 	return res, nil
 }
 
-func (r *BytesReader) ReadString() (string, error) {
-	length, err := r.ReadUint16()
-	if err != nil {
-		return "", nil
+func (r *BytesReader) ReadString(len uint64, maxLen uint64) (string, error) {
+	var length uint64
+	if len > 0 {
+		length = len
+	} else if maxLen > 0 {
+		if l, err := r.ReadUint(bitmask.MinBytes(maxLen)); err == nil {
+			length = l
+		} else {
+			return "", err
+		}
+	} else {
+		if l, err := r.ReadUint16(); err == nil {
+			length = uint64(l)
+		} else {
+			return "", err
+		}
 	}
 	sBytes, err := r.ReadBytes(int(length))
 	if err != nil {
@@ -281,12 +293,28 @@ func (w *BytesWriter) WriteBytes(b []byte, explanation string) {
 	w.explanations = append(w.explanations, &bytesExplanation{len(b), explanation})
 }
 
-func (w *BytesWriter) WriteString(s string, explanation string) {
-	w.WriteUint16(uint16(len(s)), "string length")
+func (w *BytesWriter) WriteString(s string, explanation string, length uint64, maxLen uint64) error {
+	sLen := uint64(len(s))
+	if length > 0 {
+		if sLen != length {
+			return errors.New(fmt.Sprintf("expected a string of length %d, got %d", length, len(s)))
+		}
+		w.WriteBytes([]byte(s), explanation)
+		return nil
+	}
+	if maxLen > 0 {
+		if sLen > maxLen {
+			return errors.New(fmt.Sprintf("expected a string of length <= %d, got %d", maxLen, len(s)))
+		}
+		w.WriteUint(sLen, explanation)
+	} else {
+		w.WriteUint16(uint16(sLen), "string length")
+	}
 	w.WriteBytes([]byte(s), explanation)
+	return nil
 }
 
-func (w *BytesWriter) Write(u interface{}, explanation string) {
+func (w *BytesWriter) WriteNumeric(u interface{}, explanation string) {
 	switch t := u.(type) {
 	case uint8:
 		w.WriteUint8(t, explanation)
@@ -308,8 +336,6 @@ func (w *BytesWriter) Write(u interface{}, explanation string) {
 		w.WriteFloat32(t, explanation)
 	case float64:
 		w.WriteFloat64(t, explanation)
-	case string:
-		w.WriteString(t, explanation)
 	}
 }
 
@@ -318,6 +344,20 @@ func (w *BytesWriter) WriteBool(b bool, explanation string) {
 		w.WriteByte(1, explanation)
 	} else {
 		w.WriteByte(0, explanation)
+	}
+}
+
+func (w *BytesWriter) WriteUint(u uint64, explanation string) {
+	bytesLen := bitmask.MinBytes(u)
+	switch bytesLen {
+	case 1:
+		w.WriteUint8(uint8(u), explanation)
+	case 2:
+		w.WriteUint16(uint16(u), explanation)
+	case 4:
+		w.WriteUint32(uint32(u), explanation)
+	default:
+		w.WriteUint64(u, explanation)
 	}
 }
 

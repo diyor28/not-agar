@@ -1,10 +1,25 @@
-import {POW} from "./data";
+import {MAX_UINT16, MAX_UINT32, MAX_UINT8, POW} from "./data";
 
 /**
  * Wraps a buffer with a read head pointer
  * @class
  * @param {Buffer} buffer
  */
+
+export function minBytes(n: number) {
+	if (n < MAX_UINT8) {
+		return 1;
+	}
+
+	if (n < MAX_UINT16) {
+		return 2;
+	}
+
+	if (n < MAX_UINT32) {
+		return 4;
+	}
+	return 8;
+}
 
 export default class ReadState {
 	offset = 0;
@@ -16,6 +31,20 @@ export default class ReadState {
 
 	peekUInt8() {
 		return this.buffer.readUInt8(this.offset);
+	}
+
+	readUint(size: number): number {
+		switch (size) {
+			case 1:
+				return this.readUInt8()
+			case 2:
+				return this.readUInt16()
+			case 4:
+				return this.readUInt32()
+			case 8:
+				return this.readUInt64()
+		}
+		throw new TypeError(`Expected size in [1, 2, 4, 8], got ${size}`);
 	}
 
 	readUInt8(): number {
@@ -60,8 +89,8 @@ export default class ReadState {
 		return r;
 	}
 
-	readString(): string {
-		return this.readBuffer().toString();
+	readString(len?: number, maxLen?: number): string {
+		return this.readBuffer(len, maxLen).toString();
 	}
 
 	readBoolean(): boolean {
@@ -84,17 +113,21 @@ export default class ReadState {
 		return r;
 	}
 
-	readBuffer(): Buffer {
-		const length = this.readUInt16();
+	readBuffer(len?: number, maxLen?: number): Buffer {
+		let length: number;
+		if (len) {
+			length = len;
+		} else if (maxLen) {
+			length = this.readUint(minBytes(maxLen));
+		} else {
+			length = this.readUInt16();
+		}
 		if (this.offset + length > this.buffer.length) {
+			console.log(length, len, maxLen, this.buffer.toString('hex'));
 			throw new RangeError('Trying to access beyond buffer length');
 		}
 		const r = this.buffer.slice(this.offset, this.offset + length);
 		this.offset += length;
 		return r;
-	}
-
-	hasEnded() {
-		return this.offset === this.buffer.length;
 	}
 }

@@ -102,7 +102,9 @@ func (eng *GameEngine) HandleMoveEvent(event *MoveEvent, client *sockethub.Clien
 		log.Println(err)
 		return
 	}
-	client.Emit(data.Bytes())
+	if err := client.Emit(data.Bytes()); err != nil {
+		log.Println(err)
+	}
 }
 
 func (eng *GameEngine) SendPong(data []byte, client *sockethub.Client) {

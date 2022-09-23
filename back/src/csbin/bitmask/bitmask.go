@@ -5,6 +5,22 @@ import (
 	"math/bits"
 )
 
+func MinBytes(n uint64) int {
+	bitsLen := bits.Len64(n)
+	if bitsLen <= 8 {
+		return 1
+	}
+
+	if bitsLen <= 16 {
+		return 2
+	}
+
+	if bitsLen <= 32 {
+		return 4
+	}
+	return 8
+}
+
 func New() *Bitmask {
 	return &Bitmask{}
 }

@@ -22,12 +22,13 @@ export const movedSchema = genericSchema.extends({
 	zoom: 'float32',
 	points: {
 		type: 'array',
-		of: {x: 'float32', y: 'float32'}
+		of: {x: 'float32', y: 'float32'},
+		maxLen: 255
 	}
 });
 
 export const startSchema = genericSchema.extends({
-	nickname: {type: 'string'}
+	nickname: {type: 'string', maxLen: 255}
 });
 
 export const foodSchema = genericSchema.extends({
@@ -38,7 +39,8 @@ export const foodSchema = genericSchema.extends({
 			y: 'float32',
 			weight: 'float32',
 			color: {type: 'array', of: 'uint8', length: 3}
-		}
+		},
+		maxLen: 255
 	}
 });
 
@@ -49,9 +51,10 @@ export const playersSchema = genericSchema.extends({
 			x: 'float32',
 			y: 'float32',
 			weight: 'float32',
-			nickname: 'string',
+			nickname: {type: 'string', maxLen: 255},
 			color: {type: 'array', of: 'uint8', length: 3}
-		}
+		},
+		maxLen: 255
 	}
 });
 
@@ -60,10 +63,11 @@ export const startedSchema = genericSchema.extends({
 		x: 'float32',
 		y: 'float32',
 		weight: 'float32',
-		color: {type: 'array', of: 'uint8'},
+		color: {type: 'array', of: 'uint8', length: 3},
 		points: {
 			type: 'array',
-			of: {x: 'float32', y: 'float32'}
+			of: {x: 'float32', y: 'float32'},
+			maxLen: 255
 		}
 	},
 	spikes: {
@@ -80,9 +84,10 @@ export const statsSchema = genericSchema.extends({
 	topPlayers: {
 		type: 'array',
 		of: {
-			nickname: 'string',
+			nickname: {type: 'string', maxLen: 255},
 			weight: 'int16'
-		}
+		},
+		maxLen: 255
 	}
 });
 

@@ -13,30 +13,6 @@ import {FieldsMap} from "./field";
 import Data from "./data";
 import ReadState from "./readState";
 
-
-const schema: StrictSchemaType = {
-	x: {type: 'uint32', optional: false},
-	players: {
-		type: 'array',
-		of: {x: {type: 'uint32', optional: false}},
-		optional: false,
-		maxLen: 0,
-		length: 0
-	},
-	food: {
-		type: 'array',
-		of: {type: 'float32', optional: false},
-		optional: false,
-		maxLen: 0,
-		length: 0
-	},
-	stats: {
-		type: 'object',
-		of: {x: {type: 'float32', optional: false}},
-		optional: false
-	}
-}
-
 function fieldToConf(field: FieldType): StrictTypeConf<StrictSchemaType> {
 	if (isFixedSize(field)) {
 		return {type: field, optional: false};

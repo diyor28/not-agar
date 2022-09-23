@@ -26,7 +26,7 @@ func NewField(name string, primitiveType reflect.Kind) *Field {
 }
 
 func (f *Field) Len(exactLen uint64) *Field {
-	if f.Type != reflect.Slice && f.Type != reflect.String {
+	if f.Type != reflect.Array && f.Type != reflect.Slice && f.Type != reflect.String {
 		panic(fmt.Sprintf("type %s does not support Len()", f.Type.String()))
 	}
 	f.len = exactLen
@@ -193,7 +193,7 @@ func (f *Field) Decode(value *reflect.Value, reader *bytesIO.BytesReader) error 
 	}
 	switch value.Kind() {
 	case reflect.String:
-		s, err := reader.ReadString()
+		s, err := reader.ReadString(f.len, f.maxLen)
 		if err != nil {
 			return err
 		}
@@ -257,46 +257,46 @@ func (f *Field) Encode(value *reflect.Value, writer *bytesIO.BytesWriter) error 
 	}
 	switch value.Kind() {
 	case reflect.String:
-		writer.Write(value.String(), f.loc)
+		writer.WriteString(value.String(), f.loc, f.len, f.maxLen)
 		return nil
 	case reflect.Bool:
 		writer.WriteBool(value.Bool(), f.loc)
 		return nil
 	case reflect.Uint:
-		writer.Write(uint(value.Uint()), f.loc)
+		writer.WriteNumeric(uint(value.Uint()), f.loc)
 		return nil
 	case reflect.Uint8:
-		writer.Write(uint8(value.Uint()), f.loc)
+		writer.WriteNumeric(uint8(value.Uint()), f.loc)
 		return nil
 	case reflect.Uint16:
-		writer.Write(uint16(value.Uint()), f.loc)
+		writer.WriteNumeric(uint16(value.Uint()), f.loc)
 		return nil
 	case reflect.Uint32:
-		writer.Write(uint32(value.Uint()), f.loc)
+		writer.WriteNumeric(uint32(value.Uint()), f.loc)
 		return nil
 	case reflect.Uint64:
-		writer.Write(value.Uint(), f.loc)
+		writer.WriteNumeric(value.Uint(), f.loc)
 		return nil
 	case reflect.Int:
-		writer.Write(value.Int(), f.loc)
+		writer.WriteNumeric(value.Int(), f.loc)
 		return nil
 	case reflect.Int8:
-		writer.Write(int8(value.Int()), f.loc)
+		writer.WriteNumeric(int8(value.Int()), f.loc)
 		return nil
 	case reflect.Int16:
-		writer.Write(int16(value.Int()), f.loc)
+		writer.WriteNumeric(int16(value.Int()), f.loc)
 		return nil
 	case reflect.Int32:
-		writer.Write(int32(value.Int()), f.loc)
+		writer.WriteNumeric(int32(value.Int()), f.loc)
 		return nil
 	case reflect.Int64:
-		writer.Write(value.Int(), f.loc)
+		writer.WriteNumeric(value.Int(), f.loc)
 		return nil
 	case reflect.Float32:
-		writer.Write(float32(value.Float()), f.loc)
+		writer.WriteNumeric(float32(value.Float()), f.loc)
 		return nil
 	case reflect.Float64:
-		writer.Write(value.Float(), f.loc)
+		writer.WriteNumeric(value.Float(), f.loc)
 		return nil
 	case reflect.Slice:
 		err := f.EncodeArray(value, writer)
@@ -327,9 +327,21 @@ func (f *Field) Encode(value *reflect.Value, writer *bytesIO.BytesWriter) error 
 }
 
 func (f *Field) DecodeArray(value *reflect.Value, reader *bytesIO.BytesReader) error {
-	arrLength, err := reader.ReadUint16()
-	if err != nil {
-		return err
+	var arrLength uint64
+	if f.len > 0 {
+		arrLength = f.len
+	} else if f.maxLen > 0 {
+		if aLen, err := reader.ReadUint(bitmask.MinBytes(f.maxLen)); err == nil {
+			arrLength = aLen
+		} else {
+			return err
+		}
+	} else {
+		if aLen, err := reader.ReadUint16(); err == nil {
+			arrLength = uint64(aLen)
+		} else {
+			return err
+		}
 	}
 	value.Set(reflect.MakeSlice(f.ConstructType(), int(arrLength), int(arrLength)))
 	for i := 0; i < int(arrLength); i++ {
@@ -343,8 +355,7 @@ func (f *Field) DecodeArray(value *reflect.Value, reader *bytesIO.BytesReader) e
 	return nil
 }
 
-func (f *Field) EncodeArray(value *reflect.Value, writer *bytesIO.BytesWriter) error {
-	writer.WriteUint16(uint16(value.Len()), "array length")
+func (f *Field) encodeArray(value *reflect.Value, writer *bytesIO.BytesWriter) error {
 	for i := 0; i < value.Len(); i++ {
 		el := value.Index(i)
 		err := f.subType.Encode(&el, writer)
@@ -353,6 +364,26 @@ func (f *Field) EncodeArray(value *reflect.Value, writer *bytesIO.BytesWriter) e
 		}
 	}
 	return nil
+}
+
+func (f *Field) EncodeArray(value *reflect.Value, writer *bytesIO.BytesWriter) error {
+	arrLen := uint64(value.Len())
+	if f.len > 0 {
+		if f.len != arrLen {
+			return errors.New(fmt.Sprintf("expected array of length %d, got %d", f.len, arrLen))
+		}
+		return f.encodeArray(value, writer)
+	}
+
+	if f.maxLen > 0 {
+		if arrLen > f.maxLen {
+			return errors.New(fmt.Sprintf("expected array of length <= %d, got %d", f.maxLen, arrLen))
+		}
+		writer.WriteUint(arrLen, "array length")
+	} else {
+		writer.WriteUint16(uint16(value.Len()), "array length")
+	}
+	return f.encodeArray(value, writer)
 }
 
 func (f *Field) ConstructType() reflect.Type {

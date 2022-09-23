@@ -168,17 +168,42 @@ export default class Data {
 		this.explanations.push({bytes: 8, explanation});
 	}
 
-	writeBuffer(b: Buffer, explanation?: string) {
+	writeBuffer(b: Buffer, explanation?: string, length?: number, maxLen?: number) {
 		if (!Buffer.isBuffer(b)) {
 			throw new TypeError('Expected a Buffer got ' + b);
 		}
-		this.writeUInt16(b.length, 'buffer length');
+		if (length) {
+			if (b.length != length) {
+				throw new TypeError(`Expected a buffer of length ${length}, got ${b.length}`);
+			}
+			return this.appendBuffer(b, explanation);
+		}
+		if (maxLen) {
+			if (b.length > maxLen) {
+				throw new TypeError(`Expected a buffer of length <= ${maxLen}, got ${b.length}`);
+			}
+			this.writeUint(b.length, 'buffer length');
+		} else {
+			this.writeUInt16(b.length, 'buffer length');
+		}
 		this.appendBuffer(b, explanation);
 	}
 
-	writeString(s: string, explanation?: string) {
+	writeString(s: string, explanation?: string, length?: number, maxLen?: number): void {
 		const b = new Buffer(s);
-		this.writeUInt16(b.length, 'string length');
+		if (length) {
+			if (b.length != length) {
+				throw new TypeError(`Expected a string of length ${length}, got ${b.length}`);
+			}
+			return this.appendBuffer(b, explanation);
+		} else if (maxLen) {
+			if (b.length > maxLen) {
+				throw new TypeError(`Expected a string of length <= ${maxLen}, got ${b.length}`);
+			}
+			this.writeUint(b.length, 'string length');
+		} else {
+			this.writeUInt16(b.length, 'string length');
+		}
 		this.appendBuffer(b, explanation);
 	}
 

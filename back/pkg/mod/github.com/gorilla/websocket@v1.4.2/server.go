@@ -338,7 +338,7 @@ func bufioReaderSize(originalReader io.Reader, br *bufio.Reader) int {
 }
 
 // writeHook is an io.Writer that records the last slice passed to it vio
-// io.Writer.Write.
+// io.Writer.WriteNumeric.
 type writeHook struct {
 	p []byte
 }
