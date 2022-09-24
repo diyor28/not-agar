@@ -21,3 +21,19 @@ const (
 	MaxBots                    = 20
 	SpikesSpacing              = MaxXY/MaxSpikes + SpikeWeight
 )
+
+type GameEvent uint8
+
+const (
+	Ping GameEvent = iota
+	Pong
+	Move
+	Moved
+	Start
+	Started
+	FoodEaten
+	FoodCreated
+	PlayersUpdate
+	StatsUpdate
+	Rip
+)

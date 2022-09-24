@@ -7,6 +7,7 @@ import RIP from "./RIP";
 import CreatePlayerModal from "./CreatePlayerModal";
 import Tips from "./Tips";
 import {EventBus} from "../../client";
+import {GameEvent} from "../../client/schemas";
 
 let height = window.innerHeight - 10;
 let width = window.innerWidth - 10;
@@ -24,20 +25,20 @@ export default class GameCanvas extends React.Component<any, any> {
     createPlayer = async (data: { nickname: string }) => {
         await this.game.client.connect();
         await this.game.startGame(data);
-        this.game.client.on('stats', (data) => {
+        this.game.client.on(GameEvent.StatsUpdate, (data) => {
             this.setState({stats: data.topPlayers});
         });
 
         this.game.client.on('open', () => {
-            this.setState({socketOpen: true})
+            this.setState({socketOpen: true});
         });
 
-        this.game.client.on('pong', ({ping}) => {
+        this.game.client.on(GameEvent.Pong, ({ping}) => {
             this.setState({ping});
         });
 
-        this.game.client.once('rip', () => {
-            this.setState({show: true})
+        this.game.client.once(GameEvent.Rip, () => {
+            this.setState({show: true});
         });
     }
 

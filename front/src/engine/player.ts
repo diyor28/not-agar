@@ -9,22 +9,24 @@ const textColor = 255
 export default class Player extends Entity {
     public nickname;
 
-    constructor({x, y, cameraX, cameraY, nickname, weight, color}: PlayerData) {
-        super({x, y, cameraX, cameraY, weight, color})
-        this.nickname = nickname
+    constructor({x, y, nickname, weight, color}: PlayerData) {
+        super({x, y, weight, color});
+        this.nickname = nickname;
     }
 
-    draw(p5: p5Types) {
-        let ringColor = lightenDarkenColor(this.color, - 20)
-        p5.fill(this.color)
-        p5.strokeWeight(strokeWeight)
-        p5.stroke(ringColor)
-        p5.ellipse(this.x, this.y, this.weight, this.weight)
-        p5.noStroke()
-        p5.fill(textColor)
-        p5.textAlign(p5.CENTER, p5.CENTER)
-        p5.textSize(this.weight / 5)
-        p5.text(this.nickname, this.x, this.y)
+    draw(p5: p5Types, cameraX: number, cameraY: number) {
+        const x = this._x - cameraX;
+        const y = this._y = cameraY;
+        let ringColor = lightenDarkenColor(this.color, - 20);
+        p5.fill(this.color);
+        p5.strokeWeight(strokeWeight);
+        p5.stroke(ringColor);
+        p5.ellipse(x, y, this.weight, this.weight);
+        p5.noStroke();
+        p5.fill(textColor);
+        p5.textAlign(p5.CENTER, p5.CENTER);
+        p5.textSize(this.weight / 5);
+        p5.text(this.nickname, x, y);
     }
 }
 
@@ -42,8 +44,6 @@ export class SelfPlayer extends Player {
             x: data.x,
             y: data.y,
             nickname: data.nickname,
-            cameraX: data.x,
-            cameraY: data.y,
             weight: data.weight,
             color: data.color
         });
@@ -62,14 +62,6 @@ export class SelfPlayer extends Player {
         this.velocityX = data.velocityX;
         this.velocityY = data.velocityY;
         this.points = data.points;
-    }
-
-    get x() {
-        return 0
-    }
-
-    get y() {
-        return 0
     }
 
     drawPerimeter(p5: p5Types) {
@@ -91,7 +83,7 @@ export class SelfPlayer extends Player {
         p5.fill(textColor)
         p5.textAlign(p5.CENTER, p5.CENTER)
         p5.textSize(this.weight / 5)
-        p5.text(this.nickname, this.x, this.y)
+        p5.text(this.nickname, 0, 0)
     }
 
     move(mouseX: number, mouseY: number) {

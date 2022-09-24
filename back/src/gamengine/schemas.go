@@ -2,7 +2,9 @@ package gamengine
 
 import (
 	"github.com/diyor28/not-agar/src/csbin"
+	"github.com/diyor28/not-agar/src/gamengine/constants"
 	_map "github.com/diyor28/not-agar/src/gamengine/map"
+	"github.com/diyor28/not-agar/src/gamengine/map/entity"
 	"github.com/diyor28/not-agar/src/gamengine/map/food"
 	"github.com/diyor28/not-agar/src/gamengine/map/players"
 	"github.com/diyor28/not-agar/src/gamengine/map/players/shell"
@@ -25,6 +27,7 @@ var spikeField = csbin.NewField("spike", reflect.Struct).SubFields(
 )
 
 var foodField = csbin.NewField("food", reflect.Struct).SubFields(
+	csbin.NewField("id", reflect.Uint32),
 	csbin.NewField("x", reflect.Float32),
 	csbin.NewField("y", reflect.Float32),
 	csbin.NewField("weight", reflect.Float32),
@@ -32,11 +35,11 @@ var foodField = csbin.NewField("food", reflect.Struct).SubFields(
 )
 
 var GenericSchema = csbin.New(
-	csbin.NewField("event", reflect.String),
+	csbin.NewField("event", reflect.Uint8),
 )
 
 type GenericEvent struct {
-	Event string
+	Event constants.GameEvent
 }
 
 var PingPongSchema = GenericSchema.Extends(
@@ -58,7 +61,8 @@ var StartedSchema = GenericSchema.Extends(
 			csbin.NewField("y", reflect.Float32),
 		)),
 	),
-	csbin.NewField("spikes", reflect.Slice).SubType(spikeField),
+	csbin.NewField("spikes", reflect.Slice).MaxLen(255).SubType(spikeField),
+	csbin.NewField("food", reflect.Slice).MaxLen(10000).SubType(foodField),
 )
 
 type StartedEventPlayer struct {
@@ -70,9 +74,10 @@ type StartedEventPlayer struct {
 }
 
 type StartedEvent struct {
-	Event  string
+	Event  constants.GameEvent
 	Player *StartedEventPlayer
-	Spikes spikes.Spikes
+	Spikes []*spikes.Spike
+	Food   []*food.Food
 }
 
 var MoveSchema = GenericSchema.Extends(
@@ -81,7 +86,7 @@ var MoveSchema = GenericSchema.Extends(
 )
 
 type MoveEvent struct {
-	Event string
+	Event constants.GameEvent
 	NewX  float32 `json:"newX"`
 	NewY  float32 `json:"newY"`
 }
@@ -101,7 +106,7 @@ var MovedSchema = GenericSchema.Extends(
 )
 
 type MovedEvent struct {
-	Event     string
+	Event     constants.GameEvent
 	X         float32
 	Y         float32
 	VelocityX float32
@@ -119,7 +124,7 @@ var PlayerStatsSchema = GenericSchema.Extends(
 )
 
 type PlayerStatsEvent struct {
-	Event      string
+	Event      constants.GameEvent
 	TopPlayers []_map.PlayerStat
 }
 
@@ -129,13 +134,22 @@ var AdminStatsSchema = GenericSchema.Extends(
 	csbin.NewField("topsPlayers", reflect.Slice).MaxLen(255).SubType(playerField),
 )
 
-var FoodUpdateSchema = GenericSchema.Extends(
-	csbin.NewField("food", reflect.Slice).MaxLen(255).SubType(foodField),
+var FoodCreatedSchema = GenericSchema.Extends(
+	csbin.NewField("food", reflect.Slice).MaxLen(10000).SubType(foodField),
 )
 
-type FoodUpdatedEvent struct {
-	Event string
+type FoodCreatedEvent struct {
+	Event constants.GameEvent
 	Food  []*food.Food
+}
+
+var FoodEatenSchema = GenericSchema.Extends(
+	csbin.NewField("id", reflect.Uint32),
+)
+
+type FoodEatenEvent struct {
+	Event constants.GameEvent
+	Id    entity.Id
 }
 
 var PlayersUpdatedSchema = GenericSchema.Extends(
@@ -143,6 +157,6 @@ var PlayersUpdatedSchema = GenericSchema.Extends(
 )
 
 type PlayersUpdatedEvent struct {
-	Event   string
-	Players players.Players
+	Event   constants.GameEvent
+	Players []*players.Player
 }

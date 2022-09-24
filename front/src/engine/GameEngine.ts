@@ -48,6 +48,7 @@ import p5Types from "p5";
 import Spike from "./spike"; //Import this for typechecking and intellisense
 import JoyStick from "./joystick";
 import {FoodData, GameClient, MovedEvent, PlayerData, SpikeData} from "../client";
+import {GameEvent} from "../client/schemas";
 
 export type StatsUpdate = {
     weight: number,
@@ -78,10 +79,6 @@ export default class Game {
         this._zoom = 1.0;
         this.socketUrl = process.env.REACT_APP_WS_URL as string;
         this.client = new GameClient(this.socketUrl, 1000);
-        this.client.on('moved', this.onMoved.bind(this));
-        this.client.on('players', this.playersUpdated.bind(this));
-        this.client.on('food', this.foodUpdated.bind(this));
-        this.client.on('stats', this.onStatsUpdate.bind(this));
         this.joystick = new JoyStick(width, height);
     }
 
@@ -94,10 +91,16 @@ export default class Game {
     }
 
     async startGame({nickname}: { nickname: string }) {
-        const {player, spikes} = await this.client.startGame({nickname});
+        const {player, spikes, food} = await this.client.startGame({nickname});
         this.selfPlayer = new SelfPlayer({...player, nickname}, this.height, this.width);
         this.started = true;
         this.initSpikes(spikes);
+        this.initFood(food);
+        this.client.on(GameEvent.Moved, this.onMoved.bind(this));
+        this.client.on(GameEvent.PlayersUpdate, this.playersUpdated.bind(this));
+        this.client.on(GameEvent.FoodEaten, this.foodEaten.bind(this));
+        this.client.on(GameEvent.FoodCreated, this.foodCreated.bind(this));
+        this.client.on(GameEvent.StatsUpdate, this.onStatsUpdate.bind(this));
     }
 
     windowResized(width: number, height: number) {
@@ -105,7 +108,7 @@ export default class Game {
         this.height = height;
         this.joystick.width = width;
         this.joystick.height = height;
-        if (!this.started)
+        if (!this.selfPlayer)
             return
         this.selfPlayer.width = width;
         this.selfPlayer.height = height;
@@ -116,44 +119,42 @@ export default class Game {
     }
 
     playersUpdated(data: {players: PlayerData[]}) {
-        let cameraX = this.selfPlayer._x;
-        let cameraY = this.selfPlayer._y;
         this.players = [];
         data.players.forEach((player: PlayerData) => {
             this.players.push(new Player({
                 x: player.x,
                 y: player.y,
                 nickname: player.nickname,
-                cameraX,
-                cameraY,
                 weight: player.weight,
                 color: player.color
             }));
+        });
+    }
+
+    initFood(food: FoodData[]) {
+        this.food = [];
+        food.forEach((food: FoodData) => {
+            this.food.push(new Food(food));
         })
     }
 
-    foodUpdated(data: {food: FoodData[]}) {
-        let cameraX = this.selfPlayer._x;
-        let cameraY = this.selfPlayer._y;
-        this.food = [];
-        data.food.forEach((food: FoodData) => {
-            this.food.push(new Food({
-                x: food.x,
-                y: food.y,
-                cameraX,
-                cameraY,
-                weight: food.weight,
-                color: food.color
-            }));
-        })
+    foodEaten(data: { id: number }) {
+        for (let i = 0; i < this.food.length; i ++) {
+            if (this.food[i].id == data.id) {
+                this.food.splice(i, 1)
+                break
+            }
+        }
+    }
+
+    foodCreated(data: { food: FoodData[] }) {
+        data.food.forEach(food => {
+            this.food.push(new Food(food));
+        });
     }
 
     onMoved(data: MovedEvent) {
         this.selfPlayer.update(data);
-        this.spikes.forEach(spike => {
-            spike.cameraX = data.x;
-            spike.cameraY = data.y;
-        })
     }
 
     emitMove(newX: number, newY: number) {
@@ -202,14 +203,14 @@ export default class Game {
 
     drawAll(p5: p5Types) {
         this.food.forEach(food => {
-            food.draw(p5)
-        })
+            food.draw(p5, this.selfPlayer._x, this.selfPlayer._y);
+        });
         this.spikes.forEach(spike => {
-            spike.draw(p5)
-        })
+            spike.draw(p5, this.selfPlayer._x, this.selfPlayer._y);
+        });
         this.players.forEach((player: Player) => {
-            player.draw(p5)
-        })
+            player.draw(p5, this.selfPlayer._x, this.selfPlayer._y);
+        });
     }
 
     touchEnded(p5: p5Types) {
@@ -219,23 +220,19 @@ export default class Game {
     }
 
     mouseMoved(mouseX: number, mouseY: number) {
-        if (!this.started)
+        if (!this.selfPlayer || !this.started)
             return;
         const {newX, newY} = this.selfPlayer.move(mouseX, mouseY)
         this.emitMove(newX, newY)
     }
 
     private initSpikes(data: SpikeData[]) {
-        let cameraX = this.selfPlayer._x;
-        let cameraY = this.selfPlayer._y;
         let spikes = data || [];
         this.spikes = [];
         spikes.forEach((spike: SpikeData) => {
             this.spikes.push(new Spike({
                 x: spike.x,
                 y: spike.y,
-                cameraX,
-                cameraY,
                 weight: spike.weight,
                 color: [0, 255, 0]
             }));

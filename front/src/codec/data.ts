@@ -1,3 +1,5 @@
+import {minBytes} from "./readState";
+
 export const POW = (function () {
 	const r = [];
 	let i, n = 1
@@ -51,20 +53,20 @@ export default class Data {
 		return hexString + explanation;
 	}
 
-	writeUint(value: number, explanation?: string) {
+	writeUint(value: number, size: number, explanation?: string) {
 		if (Math.round(value) !== value || value > MAX_DOUBLE_INT || value < 0) {
 			throw new TypeError('Expected uint, got ' + value);
 		}
 
-		if (value < MAX_UINT8) {
+		if (size == 1) {
 			return this.writeUInt8(value, explanation);
 		}
 
-		if (value < MAX_UINT16) {
+		if (size == 2) {
 			return this.writeUInt16(value + 0x8000, explanation);
 		}
 
-		if (value < MAX_UINT32) {
+		if (size <= 4) {
 			return this.writeUInt32(value + 0xc0000000, explanation);
 		}
 
@@ -182,7 +184,7 @@ export default class Data {
 			if (b.length > maxLen) {
 				throw new TypeError(`Expected a buffer of length <= ${maxLen}, got ${b.length}`);
 			}
-			this.writeUint(b.length, 'buffer length');
+			this.writeUint(b.length, minBytes(maxLen), 'buffer length');
 		} else {
 			this.writeUInt16(b.length, 'buffer length');
 		}
@@ -200,7 +202,7 @@ export default class Data {
 			if (b.length > maxLen) {
 				throw new TypeError(`Expected a string of length <= ${maxLen}, got ${b.length}`);
 			}
-			this.writeUint(b.length, 'string length');
+			this.writeUint(b.length, minBytes(maxLen), 'string length');
 		} else {
 			this.writeUInt16(b.length, 'string length');
 		}

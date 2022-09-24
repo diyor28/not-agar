@@ -306,7 +306,7 @@ func (w *BytesWriter) WriteString(s string, explanation string, length uint64, m
 		if sLen > maxLen {
 			return errors.New(fmt.Sprintf("expected a string of length <= %d, got %d", maxLen, len(s)))
 		}
-		w.WriteUint(sLen, explanation)
+		w.WriteUint(sLen, bitmask.MinBytes(maxLen), explanation)
 	} else {
 		w.WriteUint16(uint16(sLen), "string length")
 	}
@@ -347,9 +347,8 @@ func (w *BytesWriter) WriteBool(b bool, explanation string) {
 	}
 }
 
-func (w *BytesWriter) WriteUint(u uint64, explanation string) {
-	bytesLen := bitmask.MinBytes(u)
-	switch bytesLen {
+func (w *BytesWriter) WriteUint(u uint64, size int, explanation string) {
+	switch size {
 	case 1:
 		w.WriteUint8(uint8(u), explanation)
 	case 2:

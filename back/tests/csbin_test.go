@@ -252,3 +252,34 @@ func TestCodecMixedTypesEncode(t *testing.T) {
 		t.Error(fmt.Sprintf("expected: 000675706461746501060a0c0001010300073433323134326300000020 \ngot: %s", hexString))
 	}
 }
+
+func TestCodecArrayXYFloat32StringEncode(t *testing.T) {
+	type Point struct {
+		X float32
+		Y float32
+	}
+
+	codec := csbin.New(
+		csbin.NewField("points", reflect.Slice).MaxLen(255).SubType(
+			csbin.NewField("point", reflect.Struct).SubFields(
+				csbin.NewField("x", reflect.Float32),
+				csbin.NewField("y", reflect.Float32),
+			)),
+		csbin.NewField("nickname", reflect.String),
+	)
+
+	data := map[string]interface{}{
+		"points":   []*Point{{30, 45}, {-25, -30}},
+		"nickname": "demo",
+	}
+	writer, err := codec.Encode(&data)
+	encoded := writer.Bytes()
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	hexString := hex.EncodeToString(encoded)
+	if hexString != "0241f0000042340000c1c80000c1f00000000464656d6f" {
+		t.Error(fmt.Sprintf("expected: 0241f0000042340000c1c80000c1f00000000464656d6f \ngot: %s", hexString))
+	}
+}

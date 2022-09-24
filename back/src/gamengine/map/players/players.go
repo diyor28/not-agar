@@ -7,7 +7,6 @@ import (
 	"github.com/diyor28/not-agar/src/gamengine/map/entity"
 	"github.com/diyor28/not-agar/src/gamengine/map/players/shell"
 	"github.com/diyor28/not-agar/src/utils"
-	"github.com/frankenbeanies/uuid4"
 	"math"
 	"time"
 )
@@ -28,13 +27,20 @@ type Player struct {
 	IsDead       bool
 }
 
-func NewPlayer(x float32, y float32, weight float32, nickname string, isBot bool) *Player {
+type Players struct {
+	Players []*Player
+	lastId  entity.Id
+}
+
+func (p *Players) New(x float32, y float32, weight float32, nickname string, isBot bool) *Player {
 	sh := shell.New(50, weight/2)
+	p.lastId++
+	id := p.lastId
 	player := &Player{
 		Entity: &entity.Entity{
-			Uuid: uuid4.New().String(),
-			X:    x,
-			Y:    y,
+			Id: id,
+			X:  x,
+			Y:  y,
 		},
 		Speed:        0,
 		Nickname:     nickname,
@@ -45,7 +51,141 @@ func NewPlayer(x float32, y float32, weight float32, nickname string, isBot bool
 		Shell:        sh,
 	}
 	player.SetWeight(weight)
+	p.Append(player)
 	return player
+}
+
+func (p *Players) Append(pl *Player) {
+	p.Players = append(p.Players, pl)
+}
+
+func (p *Players) RemoveById(id entity.Id) {
+	for i, pl := range p.Players {
+		if pl.Id == id {
+			p.Players = append(p.Players[:i], p.Players[i+1:]...)
+		}
+	}
+}
+
+func (p *Players) RemoveAt(index int) {
+	p.Players = append(p.Players[:index], p.Players[index+1:]...)
+}
+
+func (p *Players) Len() int {
+	return len(p.Players)
+}
+
+func (p *Players) Last() *Player {
+	return p.Players[len(p.Players)-1]
+}
+
+func (p *Players) Get(id entity.Id) (*Player, error) {
+	for _, pl := range p.Players {
+		if pl.Id == id {
+			return pl, nil
+		}
+	}
+	return nil, errors.New(fmt.Sprintf("no player for id %d found", id))
+}
+
+func (p *Players) AsValues() []Player {
+	var result []Player
+	for _, pl := range p.Players {
+		result = append(result, *pl)
+	}
+	return result
+}
+
+func (p *Players) Exclude(id entity.Id) []*Player {
+	var result []*Player
+	for _, pl := range p.Players {
+		if pl.Id != id {
+			result = append(result, pl)
+		}
+	}
+	return result
+}
+
+func (p *Players) Largest(k int) []Player {
+	playersValues := p.AsValues()
+	numOfPlayers := len(playersValues)
+	resultLength := k
+	if numOfPlayers < k {
+		resultLength = numOfPlayers
+	}
+	for i := 0; i < resultLength; i++ {
+		var maxIdx = i
+		for j := i; j < numOfPlayers; j++ {
+			if playersValues[j].Weight > playersValues[maxIdx].Weight {
+				maxIdx = j
+			}
+		}
+		playersValues[i], playersValues[maxIdx] = playersValues[maxIdx], playersValues[i]
+	}
+	return playersValues[:resultLength]
+}
+
+func (p *Players) Closest(player *Player, kClosest int) []*Player {
+	otherPlayers := p.Exclude(player.Id)
+	totalPlayers := len(otherPlayers)
+	playersDistances := make(map[entity.Id]float32, totalPlayers)
+	for _, p := range otherPlayers {
+		playersDistances[p.Id] = utils.Distance(player.X, p.X, player.Y, p.Y)
+	}
+
+	numResults := kClosest
+	if kClosest > totalPlayers {
+		numResults = totalPlayers
+	}
+	for i := 0; i < numResults; i++ {
+		var minIdx = i
+		for j := i + 1; j < totalPlayers; j++ {
+			if playersDistances[otherPlayers[j].Id] < playersDistances[otherPlayers[minIdx].Id] {
+				minIdx = j
+			}
+		}
+		otherPlayers[i], otherPlayers[minIdx] = otherPlayers[minIdx], otherPlayers[i]
+	}
+	return otherPlayers[:numResults]
+}
+
+func (p *Players) Update(id entity.Id, newX float32, newY float32) (*Player, error) {
+	player, err := p.Get(id)
+	if err != nil {
+		return nil, err
+	}
+	player.UpdateDirection(newX, newY)
+	return player, nil
+}
+
+func (p *Players) Real() []*Player {
+	var result []*Player
+	for _, pl := range p.Players {
+		if !pl.IsBot {
+			result = append(result, pl)
+		}
+	}
+	return result
+}
+
+func (p *Players) Bots() []*Player {
+	var result []*Player
+	for _, pl := range p.Players {
+		if pl.IsBot {
+			result = append(result, pl)
+		}
+	}
+	return result
+}
+
+func (p *Players) BotsCount() int {
+	count := 0
+	for _, player := range p.Players {
+		if player.IsBot {
+			count++
+		}
+	}
+	return count
 }
 
 func (pl *Player) PassiveWeightLoss() {
@@ -139,115 +279,4 @@ func (pl *Player) EatEntity(entity interface{ GetWeight() float32 }) {
 func (pl *Player) SetWeight(weight float32) {
 	pl.Shell.SetRadius(weight / 2)
 	pl.Entity.SetWeight(weight)
-}
-
-type Players []*Player
-
-func (players Players) Get(uuid string) (*Player, error) {
-	for _, p := range players {
-		if p.Uuid == uuid {
-			return p, nil
-		}
-	}
-	return nil, errors.New(fmt.Sprintf("no player for uuid %s found", uuid))
-}
-
-func (players Players) AsValues() []Player {
-	var result []Player
-	for _, p := range players {
-		result = append(result, *p)
-	}
-	return result
-}
-
-func (players Players) Exclude(uuid string) Players {
-	var result Players
-	for _, p := range players {
-		if p.Uuid != uuid {
-			result = append(result, p)
-		}
-	}
-	return result
-}
-
-func (players Players) Largest(k int) []Player {
-	playersValues := players.AsValues()
-	numOfPlayers := len(playersValues)
-	resultLength := k
-	if numOfPlayers < k {
-		resultLength = numOfPlayers
-	}
-	for i := 0; i < resultLength; i++ {
-		var maxIdx = i
-		for j := i; j < numOfPlayers; j++ {
-			if playersValues[j].Weight > playersValues[maxIdx].Weight {
-				maxIdx = j
-			}
-		}
-		playersValues[i], playersValues[maxIdx] = playersValues[maxIdx], playersValues[i]
-	}
-	return playersValues[:resultLength]
-}
-
-func (players Players) Closest(player *Player, kClosest int) Players {
-	otherPlayers := players.Exclude(player.Uuid)
-	totalPlayers := len(otherPlayers)
-	playersDistances := make(map[string]float32, totalPlayers)
-	for _, p := range otherPlayers {
-		playersDistances[p.Uuid] = utils.Distance(player.X, p.X, player.Y, p.Y)
-	}
-
-	numResults := kClosest
-	if kClosest > totalPlayers {
-		numResults = totalPlayers
-	}
-	for i := 0; i < numResults; i++ {
-		var minIdx = i
-		for j := i + 1; j < totalPlayers; j++ {
-			if playersDistances[otherPlayers[j].Uuid] < playersDistances[otherPlayers[minIdx].Uuid] {
-				minIdx = j
-			}
-		}
-		otherPlayers[i], otherPlayers[minIdx] = otherPlayers[minIdx], otherPlayers[i]
-	}
-	return otherPlayers[:numResults]
-}
-
-func (players Players) Update(uuid string, newX float32, newY float32) (*Player, error) {
-	player, err := players.Get(uuid)
-	if err != nil {
-		return nil, err
-	}
-	player.UpdateDirection(newX, newY)
-	return player, nil
-}
-
-func (players Players) Real() Players {
-	var result Players
-	for _, p := range players {
-		if !p.IsBot {
-			result = append(result, p)
-		}
-	}
-	return result
-}
-
-func (players Players) Bots() Players {
-	var result Players
-	for _, p := range players {
-		if p.IsBot {
-			result = append(result, p)
-		}
-	}
-	return result
-}
-
-func (players Players) BotsCount() int {
-	count := 0
-	for _, player := range players {
-		if player.IsBot {
-			count++
-		}
-	}
-	return count
 }

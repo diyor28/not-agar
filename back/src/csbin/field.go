@@ -133,7 +133,7 @@ func (f *Fields) Encode(reflection *reflect.Value, writer *bytesIO.BytesWriter) 
 			fieldName = strings.Title(field.Name)
 			value = reflection.FieldByName(fieldName)
 		}
-		if value.IsZero() {
+		if value.IsZero() && field.optional {
 			continue
 		}
 		if !value.IsValid() {
@@ -379,10 +379,10 @@ func (f *Field) EncodeArray(value *reflect.Value, writer *bytesIO.BytesWriter) e
 		if arrLen > f.maxLen {
 			return errors.New(fmt.Sprintf("expected array of length <= %d, got %d", f.maxLen, arrLen))
 		}
-		writer.WriteUint(arrLen, "array length")
-	} else {
-		writer.WriteUint16(uint16(value.Len()), "array length")
+		writer.WriteUint(arrLen, bitmask.MinBytes(f.maxLen), "array length")
+		return f.encodeArray(value, writer)
 	}
+	writer.WriteUint16(uint16(arrLen), "array length")
 	return f.encodeArray(value, writer)
 }
 

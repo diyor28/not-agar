@@ -1,8 +1,6 @@
 export interface EntityData {
 	x: number,
 	y: number,
-	cameraX: number,
-	cameraY: number,
 	weight: number,
 	color: number[]
 }
@@ -12,7 +10,7 @@ export interface SpikeData extends EntityData {
 }
 
 export interface FoodData extends EntityData {
-
+	id: number
 }
 
 export interface PlayerData extends EntityData {
@@ -49,4 +47,5 @@ export interface MoveCommand {
 export interface InitialData {
 	player: SelfPlayerData
 	spikes: SpikeData[]
+	food: FoodData[]
 }

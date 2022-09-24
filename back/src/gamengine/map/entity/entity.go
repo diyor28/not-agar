@@ -1,10 +1,11 @@
 package entity
 
 import (
-	"errors"
 	"github.com/diyor28/not-agar/src/gamengine/constants"
 	"github.com/diyor28/not-agar/src/utils"
 )
+
+type Id uint32
 
 type Interface interface {
 	GetX() float32
@@ -13,10 +14,10 @@ type Interface interface {
 }
 
 type Entity struct {
-	Uuid        string  `json:"-"`
-	X           float32 `json:"x"`
-	Y           float32 `json:"y"`
-	Weight      float32 `json:"weight"`
+	Id          Id
+	X           float32
+	Y           float32
+	Weight      float32
 	surfaceArea float32
 }
 
@@ -40,17 +41,4 @@ func (e *Entity) GetY() float32 {
 
 func (e *Entity) GetXY() (float32, float32) {
 	return e.X, e.Y
-}
-
-type Entities struct {
-	Items []*Entity
-}
-
-func (entities *Entities) GetItem(uuid string) (*Entity, error) {
-	for i := range entities.Items {
-		if entities.Items[i].Uuid == uuid {
-			return entities.Items[i], nil
-		}
-	}
-	return nil, errors.New("no players found")
 }

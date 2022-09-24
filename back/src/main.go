@@ -9,7 +9,7 @@ import (
 	"runtime"
 )
 
-var gameMap = gamengine.NewGameMap()
+var gameMap = gamengine.NewGameMap(50)
 
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
@@ -38,7 +38,7 @@ func main() {
 	processes := 4
 	log.Println("Setting max processes:", processes)
 	runtime.GOMAXPROCS(processes)
-	go gameMap.Run(50)
+	go gameMap.Run()
 	router := mux.NewRouter().StrictSlash(true)
 	router.Use(loggingMiddleware)
 	router.HandleFunc("/player-ws", playerWS)

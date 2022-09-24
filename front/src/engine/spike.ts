@@ -4,7 +4,7 @@ import p5Types from "p5";
 import {lightenDarkenColor} from "./utils"; //Import this for typechecking and intellisense
 
 export default class Spike extends Entity {
-    draw(p5: p5Types) {
+    draw(p5: p5Types, cameraX: number, cameraY: number) {
         p5.fill(this.color)
         p5.strokeWeight(8)
         p5.stroke(lightenDarkenColor(this.color, -20))
@@ -19,8 +19,8 @@ export default class Spike extends Entity {
                 rX *= 1.05
                 rY *= 1.05
             }
-            let x = this._x - this.cameraX + rX
-            let y = this._y - this.cameraY + rY
+            let x = this._x - cameraX + rX
+            let y = this._y - cameraY + rY
             // p5.point(x, y)
             p5.vertex(x, y)
         }

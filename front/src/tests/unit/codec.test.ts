@@ -123,4 +123,21 @@ describe('Schema.decode', () => {
 		assert.strictEqual(decoded.player.color[1], 120);
 		assert.strictEqual(decoded.player.color[2], 100);
 	});
+
+	test('decode {[{float32, float32}].maxLen=255, string}', () => {
+		const schema = new Schema({
+			points: {
+				type: 'array',
+				of: {x: 'float32', y: 'float32'},
+				maxLen: 255
+			},
+			nickname: 'string'
+		});
+		const decoded = schema.decode(Buffer.from('0241f0000042340000c1c80000c1f00000000464656d6f', 'hex'));
+		assert.strictEqual(decoded.points[0].x, 30);
+		assert.strictEqual(decoded.points[0].y, 45);
+		assert.strictEqual(decoded.points[1].x, -25);
+		assert.strictEqual(decoded.points[1].y, -30);
+		assert.strictEqual(decoded.nickname, 'demo');
+	});
 });

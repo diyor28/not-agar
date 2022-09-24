@@ -123,7 +123,6 @@ export default class ReadState {
 			length = this.readUInt16();
 		}
 		if (this.offset + length > this.buffer.length) {
-			console.log(length, len, maxLen, this.buffer.toString('hex'));
 			throw new RangeError('Trying to access beyond buffer length');
 		}
 		const r = this.buffer.slice(this.offset, this.offset + length);

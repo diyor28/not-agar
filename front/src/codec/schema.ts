@@ -44,7 +44,7 @@ function fieldToConf(field: FieldType): StrictTypeConf<StrictSchemaType> {
 			of: fieldToConf(field.of),
 			optional: false,
 			length: field.length || 0,
-			maxLen: field.length || 0
+			maxLen: field.maxLen || 0
 		};
 	}
 

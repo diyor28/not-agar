@@ -41,7 +41,7 @@ export class FieldsMap {
 		if (this.hasOptionalFields()) {
 			const {bitmask, bitmaskSize} = this.calcBitmask(value);
 			data.writeUInt8(bitmaskSize, 'bitmask size');
-			data.writeUint(bitmask, 'bitmask');
+			data.writeUint(bitmask, bitmaskSize, 'bitmask');
 		}
 		for (const field of this.fields) {
 			const subValue = value[field.name];
@@ -64,7 +64,6 @@ export class FieldsMap {
 		const result: Record<string, any> = {};
 		this.fields.forEach((field, i) => {
 			if (hasOptionalFields && this.isMaskTrue(bitmask, i) || !hasOptionalFields) {
-				console.log(field.loc, field.len);
 				result[field.name] = field.decode(state);
 			} else {
 				result[field.name] = undefined;
@@ -244,14 +243,14 @@ export default class Field {
 		}
 		let arrLen = value.length;
 		if (this.len) {
-			if (arrLen != this.len) {
+			if (arrLen !== this.len) {
 				throw new TypeError(`Expected an Array of length ${this.len}, got ${arrLen}`);
 			}
 		} else if (this.maxLen) {
 			if (arrLen > this.maxLen) {
 				throw new TypeError(`Expected a string of length <= ${this.maxLen}, got ${arrLen}`);
 			}
-			data.writeUint(arrLen, 'array length');
+			data.writeUint(arrLen, minBytes(this.maxLen), 'array length');
 		} else {
 			data.writeUInt16(arrLen, 'array length');
 		}
@@ -272,7 +271,6 @@ export default class Field {
 		} else {
 			length = state.readUInt16();
 		}
-		console.log(length, this.len, this.loc);
 		let arr = new Array(length);
 		for (let j = 0; j < arr.length; j ++) {
 			arr[j] = this.subType.decode(state);

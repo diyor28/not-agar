@@ -15,14 +15,18 @@ type PlayerStat struct {
 }
 
 func New() *Map {
-	gameMap := Map{}
+	gameMap := Map{
+		Players: &players.Players{},
+		Food:    &food.Foods{},
+		Spikes:  &spikes.Spikes{},
+	}
 	return &gameMap
 }
 
 type Map struct {
-	Players players.Players `json:"players"`
-	Foods   food.Foods      `json:"food"`
-	Spikes  spikes.Spikes   `json:"spikes"`
+	Players *players.Players
+	Food    *food.Foods
+	Spikes  *spikes.Spikes
 }
 
 func (m *Map) PopulateBots() {
@@ -38,17 +42,18 @@ func (m *Map) PopulateBots() {
 func (m *Map) PopulateSpikes() {
 	for i := 0; i < constants.MaxSpikes; i++ {
 		x, y := m.Spikes.RandXY(constants.SpikesSpacing)
-		spike := spikes.New(x, y, constants.SpikeWeight)
-		m.Spikes = append(m.Spikes, spike)
+		m.Spikes.New(x, y, constants.SpikeWeight)
 	}
 }
 
-func (m *Map) PopulateFood() {
-	if len(m.Foods) < constants.MaxNumFood {
-		for i := 0; i < constants.MaxNumFood-len(m.Foods); i++ {
-			m.createRandomFood()
+func (m *Map) PopulateFood() []*food.Food {
+	var createdFood []*food.Food
+	if m.Food.Len() < constants.MaxNumFood {
+		for i := 0; i < constants.MaxNumFood-m.Food.Len(); i++ {
+			createdFood = append(createdFood, m.createRandomFood())
 		}
 	}
+	return createdFood
 }
 
 func (m *Map) GetStats() []PlayerStat {
@@ -63,33 +68,9 @@ func (m *Map) GetStats() []PlayerStat {
 	return topPlayers
 }
 
-func (m *Map) removePlayerIndex(index int) {
-	m.Players = append(m.Players[:index], m.Players[index+1:]...)
-}
-
-func (m *Map) removeFoodIndex(index int) {
-	m.Foods = append(m.Foods[:index], m.Foods[index+1:]...)
-}
-func (m *Map) removeFoodUuid(uuid string) {
-	for i, p := range m.Foods {
-		if p.Uuid == uuid {
-			m.Foods = append(m.Foods[:i], m.Foods[i+1:]...)
-		}
-	}
-}
-
-func (m *Map) RemovePlayerUUID(uuid string) {
-	for i, p := range m.Players {
-		if p.Uuid == uuid {
-			m.Players = append(m.Players[:i], m.Players[i+1:]...)
-		}
-	}
-}
-
 func (m *Map) createFood(x float32, y float32) *food.Food {
-	food := food.New(x, y, constants.FoodWeight)
-	m.Foods = append(m.Foods, food)
-	return food
+	f := m.Food.New(x, y, constants.FoodWeight)
+	return f
 }
 
 func (m *Map) createRandomFood() *food.Food {
@@ -97,33 +78,31 @@ func (m *Map) createRandomFood() *food.Food {
 	return m.createFood(x, y)
 }
 
-func (m *Map) CreatePlayer(nickname string, isBot bool) (*players.Player, spikes.Spikes) {
+func (m *Map) CreatePlayer(nickname string, isBot bool) *players.Player {
 	x, y := utils.RandXY()
-	pl := players.NewPlayer(x, y, constants.MinWeight, nickname, isBot)
-	// TODO: better solution
-	//if len(m.Players) >= constants.MaxPlayers {
-	//	m.removePlayerIndex(0)
-	//}
-	m.Players = append(m.Players, pl)
-	return pl, m.Spikes
+	pl := m.Players.New(x, y, constants.MinWeight, nickname, isBot)
+	return pl
 }
 
-func (m *Map) RemoveEatableFood() {
-	for _, pl := range m.Players {
+func (m *Map) RemoveEatableFood() []*food.Food {
+	var eatenFood []*food.Food
+	for _, pl := range m.Players.Players {
 		var filteredFoods []*food.Food
-		for _, f := range m.Foods {
+		for _, f := range m.Food.Food {
 			if pl.FoodEatable(f) {
 				pl.EatEntity(f)
+				eatenFood = append(eatenFood, f)
 			} else {
 				filteredFoods = append(filteredFoods, f)
 			}
 		}
-		m.Foods = filteredFoods
+		m.Food.Food = filteredFoods
 	}
+	return eatenFood
 }
 
 func (m *Map) SpikeCollisions(pl *players.Player) bool {
-	for _, s := range m.Spikes {
+	for _, s := range m.Spikes.Spikes {
 		if s.Collided(pl) {
 			return true
 		}
@@ -132,14 +111,14 @@ func (m *Map) SpikeCollisions(pl *players.Player) bool {
 }
 
 func (m *Map) RemoveDeadPlayers() []*players.Player {
-	totalPlayers := len(m.Players)
+	totalPlayers := len(m.Players.Players)
 	for i := 0; i < totalPlayers; i++ {
-		p1 := m.Players[i]
+		p1 := m.Players.Players[i]
 		if m.SpikeCollisions(p1) {
 			p1.IsDead = true
 		}
 		for k := i; k < totalPlayers; k++ {
-			p2 := m.Players[k]
+			p2 := m.Players.Players[k]
 			if p2.IsDead {
 				continue
 			}
@@ -154,18 +133,18 @@ func (m *Map) RemoveDeadPlayers() []*players.Player {
 			}
 		}
 	}
-	var newPlayers players.Players
+	var newPlayers []*players.Player
 	var eatenPlayers []*players.Player
-	for index, pl := range m.Players {
+	for index, pl := range m.Players.Players {
 		if pl.IsDead {
-			if m.Players[index].IsBot {
+			if m.Players.Players[index].IsBot {
 				continue
 			}
-			eatenPlayers = append(eatenPlayers, m.Players[index])
+			eatenPlayers = append(eatenPlayers, m.Players.Players[index])
 		} else {
-			newPlayers = append(newPlayers, m.Players[index])
+			newPlayers = append(newPlayers, m.Players.Players[index])
 		}
 	}
-	m.Players = newPlayers
+	m.Players.Players = newPlayers
 	return eatenPlayers
 }

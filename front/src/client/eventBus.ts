@@ -1,10 +1,10 @@
 export class EventBus {
-	listeners: { event: string, callback: (data: any) => void, once: boolean }[] = []
+	listeners: { event: string | number, callback: (data: any) => void, once: boolean }[] = []
 
 	constructor() {
 	}
 
-	off(event: string, callback: (data: any) => void) {
+	off(event: string | number, callback: (data: any) => void) {
 		const indices: number[] = [];
 		this.listeners.forEach((listener, index) => {
 			if (listener.event === event && listener.callback === callback) {
@@ -16,15 +16,15 @@ export class EventBus {
 		}
 	}
 
-	on(event: string, callback: (data: any) => void) {
+	on(event: string | number, callback: (data: any) => void) {
 		this.listeners.push({event, callback, once: false});
 	}
 
-	once(event: string, callback: (data: any) => void) {
+	once(event: string | number, callback: (data: any) => void) {
 		this.listeners.push({event, callback, once: true});
 	}
 
-	emit(event: string, data: any) {
+	emit(event: string | number, data: any) {
 		this.listeners.forEach((listener, index) => {
 			if (listener.event === event) {
 				listener.callback(data);
