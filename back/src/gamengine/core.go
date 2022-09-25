@@ -6,12 +6,48 @@ import (
 	"github.com/diyor28/not-agar/src/gamengine/constants"
 	_map "github.com/diyor28/not-agar/src/gamengine/map"
 	"github.com/diyor28/not-agar/src/gamengine/map/entity"
+	"github.com/diyor28/not-agar/src/gamengine/map/food"
 	"github.com/diyor28/not-agar/src/gamengine/map/players"
+	"github.com/diyor28/not-agar/src/gamengine/map/players/shell"
+	"github.com/diyor28/not-agar/src/gamengine/map/spikes"
+	"github.com/diyor28/not-agar/src/gamengine/schemas"
 	"github.com/diyor28/not-agar/src/sockethub"
 	"log"
 	"sync"
 	"time"
 )
+
+func castFood(food []*food.Food) []*schemas.Food {
+	res := make([]*schemas.Food, len(food))
+	for i, f := range food {
+		res[i] = &schemas.Food{Id: f.Id, X: f.X, Y: f.Y, Weight: f.Weight, Color: f.Color}
+	}
+	return res
+}
+
+func castSpikes(spikes []*spikes.Spike) []*schemas.Spike {
+	res := make([]*schemas.Spike, len(spikes))
+	for i, s := range spikes {
+		res[i] = &schemas.Spike{X: s.X, Y: s.Y, Weight: s.Weight}
+	}
+	return res
+}
+
+func castPlayers(pls []*players.Player) []*schemas.Player {
+	res := make([]*schemas.Player, len(pls))
+	for i, p := range pls {
+		res[i] = &schemas.Player{X: uint16(p.X), Y: uint16(p.Y), Weight: p.Weight, Nickname: p.Nickname, Color: p.Color}
+	}
+	return res
+}
+
+func castPoints(points []*shell.Point) []*schemas.Point {
+	res := make([]*schemas.Point, len(points))
+	for i, p := range points {
+		res[i] = &schemas.Point{X: int16(p.X * 100), Y: int16(p.Y * 100)}
+	}
+	return res
+}
 
 type GameEngine struct {
 	Hub        *sockethub.Hub
@@ -72,21 +108,21 @@ func (eng *GameEngine) PlayerReverseLookUp(id entity.Id) (*sockethub.Client, err
 	return nil, errors.New(fmt.Sprintf("no players for id %d found", id))
 }
 
-func (eng *GameEngine) HandleMoveEvent(event *MoveEvent, client *sockethub.Client) {
+func (eng *GameEngine) HandleMoveEvent(event *schemas.MoveEvent, client *sockethub.Client) {
 	pl, err := eng.Map.Players.Update(eng.PlayersMap[client], event.NewX, event.NewY)
 	if err != nil {
 		log.Println(err)
 		return
 	}
-	data, err := MovedSchema.Encode(&MovedEvent{
-		constants.Moved,
-		pl.X,
-		pl.Y,
-		pl.VelocityX,
-		pl.VelocityY,
-		pl.Weight,
-		pl.Zoom,
-		pl.Shell.Points,
+	data, err := schemas.MovedSchema.Encode(&schemas.MovedEvent{
+		Event:     constants.Moved,
+		X:         pl.X,
+		Y:         pl.Y,
+		VelocityX: pl.VelocityX,
+		VelocityY: pl.VelocityY,
+		Weight:    pl.Weight,
+		Zoom:      pl.Zoom,
+		Points:    castPoints(pl.Shell.Points),
 	})
 	if err != nil {
 		log.Println(err)
@@ -99,12 +135,12 @@ func (eng *GameEngine) HandleMoveEvent(event *MoveEvent, client *sockethub.Clien
 
 func (eng *GameEngine) SendPong(data []byte, client *sockethub.Client) {
 	pingData := make(map[string]interface{})
-	if err := PingPongSchema.Decode(data, &pingData); err != nil {
+	if err := schemas.PingPongSchema.Decode(data, &pingData); err != nil {
 		log.Println("PingPongSchema.Decode(): ", err)
 		return
 	}
 	pongEvent := map[string]interface{}{"event": constants.Pong, "timestamp": pingData["timestamp"]}
-	if data, err := PingPongSchema.Encode(&pongEvent); err != nil {
+	if data, err := schemas.PingPongSchema.Encode(&pongEvent); err != nil {
 		log.Println("PingPongSchema.Encode(): ", err)
 	} else {
 		client.Emit(data.Bytes())
@@ -114,11 +150,11 @@ func (eng *GameEngine) SendPong(data []byte, client *sockethub.Client) {
 func (eng *GameEngine) publishStats() {
 	for range time.Tick(time.Duration(2000) * time.Millisecond) {
 		stats := eng.Map.GetStats()
-		statsEvent := &PlayerStatsEvent{
+		statsEvent := &schemas.PlayerStatsEvent{
 			Event:      constants.StatsUpdate,
 			TopPlayers: stats,
 		}
-		if data, err := PlayerStatsSchema.Encode(statsEvent); err != nil {
+		if data, err := schemas.PlayerStatsSchema.Encode(statsEvent); err != nil {
 			log.Println(err)
 		} else {
 			eng.notifyAllPlayers(data.Bytes())
@@ -153,17 +189,17 @@ func (eng *GameEngine) notifyPlayer(pl *players.Player) error {
 		log.Println(err)
 		return err
 	}
-	movedEvent := &MovedEvent{
-		constants.Moved,
-		pl.X,
-		pl.Y,
-		pl.VelocityX,
-		pl.VelocityY,
-		pl.Weight,
-		pl.Zoom,
-		pl.Shell.Points,
+	movedEvent := &schemas.MovedEvent{
+		Event:     constants.Moved,
+		X:         pl.X,
+		Y:         pl.Y,
+		VelocityX: pl.VelocityX,
+		VelocityY: pl.VelocityY,
+		Weight:    pl.Weight,
+		Zoom:      pl.Zoom,
+		Points:    castPoints(pl.Shell.Points),
 	}
-	if data, err := MovedSchema.Encode(movedEvent); err != nil {
+	if data, err := schemas.MovedSchema.Encode(movedEvent); err != nil {
 		log.Println(err)
 		return err
 	} else {
@@ -173,8 +209,11 @@ func (eng *GameEngine) notifyPlayer(pl *players.Player) error {
 		}
 	}
 	plrs := eng.Map.Players.Closest(pl, constants.NumPlayersResponse)
-	plUpdateEvent := &PlayersUpdatedEvent{constants.PlayersUpdate, plrs}
-	if data, err := PlayersUpdatedSchema.Encode(plUpdateEvent); err != nil {
+	plUpdateEvent := &schemas.PlayersUpdatedEvent{
+		Event:   constants.PlayersUpdate,
+		Players: castPlayers(plrs),
+	}
+	if data, err := schemas.PlayersUpdatedSchema.Encode(plUpdateEvent); err != nil {
 		log.Println(err)
 		return err
 	} else {
@@ -195,43 +234,41 @@ func (eng *GameEngine) MakeMove(pl *players.Player) {
 func (eng *GameEngine) Run() {
 
 	eng.Hub.OnMessage(func(data []byte, client *sockethub.Client) {
-		event := &GenericEvent{}
-		if err := GenericSchema.Decode(data, event); err != nil {
+		event := &schemas.GenericEvent{}
+		if err := schemas.GenericSchema.Decode(data, event); err != nil {
 			log.Println("GenericSchema.Decode(): ", err)
 			return
 		}
 		switch event.Event {
 		case constants.Move:
-			moveEvent := &MoveEvent{}
-			if err := MoveSchema.Decode(data, moveEvent); err != nil {
+			moveEvent := &schemas.MoveEvent{}
+			if err := schemas.MoveSchema.Decode(data, moveEvent); err != nil {
 				log.Println("MoveSchema.Decode(): ", err)
 				return
 			}
 			eng.HandleMoveEvent(moveEvent, client)
 		case constants.Start:
 			var startEvent = make(map[string]interface{})
-			if err := StartSchema.Decode(data, &startEvent); err != nil {
+			if err := schemas.StartSchema.Decode(data, &startEvent); err != nil {
 				log.Println("StartSchema.Decode(): ", err)
 				return
 			}
 			nickname := startEvent["nickname"].(string)
 			player := eng.Map.CreatePlayer(nickname, false)
-			spikes := eng.Map.Spikes.Spikes
-			food := eng.Map.Food.Food
 			eng.PlayersMap[client] = player.Id
-			startedEvent := &StartedEvent{
+			startedEvent := &schemas.StartedEvent{
 				Event: constants.Started,
-				Player: &StartedEventPlayer{
-					player.X,
-					player.Y,
-					player.Weight,
-					player.Color,
-					player.Shell.Points,
+				Player: &schemas.StartedEventPlayer{
+					X:      player.X,
+					Y:      player.Y,
+					Weight: player.Weight,
+					Color:  player.Color,
+					Points: castPoints(player.Shell.Points),
 				},
-				Spikes: spikes,
-				Food:   food,
+				Spikes: castSpikes(eng.Map.Spikes.Spikes),
+				Food:   castFood(eng.Map.Food.Food),
 			}
-			if data, err := StartedSchema.Encode(startedEvent); err != nil {
+			if data, err := schemas.StartedSchema.Encode(startedEvent); err != nil {
 				log.Println("StartedSchema.Encode(): ", err)
 				return
 			} else {
@@ -258,11 +295,11 @@ func (eng *GameEngine) populateFood() {
 	if len(createdFood) == 0 {
 		return
 	}
-	event := &FoodCreatedEvent{
+	event := &schemas.FoodCreatedEvent{
 		Event: constants.FoodCreated,
-		Food:  createdFood,
+		Food:  castFood(createdFood),
 	}
-	if data, err := FoodCreatedSchema.Encode(event); err == nil {
+	if data, err := schemas.FoodCreatedSchema.Encode(event); err == nil {
 		eng.notifyAllPlayers(data.Bytes())
 	} else {
 		log.Println("FoodCreatedSchema.Encode()", err)
@@ -279,7 +316,7 @@ func (eng *GameEngine) removeDeadPlayers() {
 			log.Println(err)
 			continue
 		}
-		if data, err := GenericSchema.Encode(&ripEvent); err != nil {
+		if data, err := schemas.GenericSchema.Encode(&ripEvent); err != nil {
 			log.Println(err)
 		} else {
 			if err := client.Emit(data.Bytes()); err != nil {
@@ -292,11 +329,11 @@ func (eng *GameEngine) removeDeadPlayers() {
 func (eng *GameEngine) removeEatableFood() {
 	eatenFood := eng.Map.RemoveEatableFood()
 	for _, f := range eatenFood {
-		event := &FoodEatenEvent{
+		event := &schemas.FoodEatenEvent{
 			Event: constants.FoodEaten,
 			Id:    f.Id,
 		}
-		if data, err := FoodEatenSchema.Encode(event); err == nil {
+		if data, err := schemas.FoodEatenSchema.Encode(event); err == nil {
 			eng.notifyAllPlayers(data.Bytes())
 		} else {
 			log.Println("FoodEatenSchema.Decode()", err)

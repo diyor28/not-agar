@@ -154,6 +154,10 @@ export default class Game {
     }
 
     onMoved(data: MovedEvent) {
+        data.points.forEach(point => {
+            point.x /= 100;
+            point.y /= 100;
+        });
         this.selfPlayer.update(data);
     }
 

@@ -5,14 +5,10 @@ import (
 	"github.com/diyor28/not-agar/src/gamengine/map/food"
 	"github.com/diyor28/not-agar/src/gamengine/map/players"
 	"github.com/diyor28/not-agar/src/gamengine/map/spikes"
+	"github.com/diyor28/not-agar/src/gamengine/schemas"
 	"github.com/diyor28/not-agar/src/randomname"
 	"github.com/diyor28/not-agar/src/utils"
 )
-
-type PlayerStat struct {
-	Nickname string
-	Weight   int16
-}
 
 func New() *Map {
 	gameMap := Map{
@@ -56,11 +52,11 @@ func (m *Map) PopulateFood() []*food.Food {
 	return createdFood
 }
 
-func (m *Map) GetStats() []PlayerStat {
+func (m *Map) GetStats() []*schemas.PlayerStat {
 	plrs := m.Players.Largest(constants.StatsNumber)
-	var topPlayers []PlayerStat
+	var topPlayers []*schemas.PlayerStat
 	for i := 0; i < len(plrs); i++ {
-		topPlayers = append(topPlayers, PlayerStat{
+		topPlayers = append(topPlayers, &schemas.PlayerStat{
 			Nickname: plrs[i].Nickname,
 			Weight:   int16(plrs[i].Weight),
 		})

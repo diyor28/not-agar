@@ -36,7 +36,7 @@ export const movedSchema = genericSchema.extends({
 	zoom: 'float32',
 	points: {
 		type: 'array',
-		of: {x: 'float32', y: 'float32'},
+		of: {x: 'int16', y: 'int16'},
 		maxLen: 255
 	}
 });
@@ -53,7 +53,7 @@ export const startedSchema = genericSchema.extends({
 		color: {type: 'array', of: 'uint8', length: 3},
 		points: {
 			type: 'array',
-			of: {x: 'float32', y: 'float32'},
+			of: {x: 'int16', y: 'int16'},
 			maxLen: 255
 		}
 	},
@@ -101,8 +101,8 @@ export const playersSchema = genericSchema.extends({
 	players: {
 		type: 'array',
 		of: {
-			x: 'float32',
-			y: 'float32',
+			x: 'uint16',
+			y: 'uint16',
 			weight: 'float32',
 			nickname: {type: 'string', maxLen: 255},
 			color: {type: 'array', of: 'uint8', length: 3}

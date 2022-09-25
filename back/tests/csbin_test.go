@@ -273,11 +273,11 @@ func TestCodecArrayXYFloat32StringEncode(t *testing.T) {
 		"nickname": "demo",
 	}
 	writer, err := codec.Encode(&data)
-	encoded := writer.Bytes()
 	if err != nil {
 		t.Error(err)
 		return
 	}
+	encoded := writer.Bytes()
 	hexString := hex.EncodeToString(encoded)
 	if hexString != "0241f0000042340000c1c80000c1f00000000464656d6f" {
 		t.Error(fmt.Sprintf("expected: 0241f0000042340000c1c80000c1f00000000464656d6f \ngot: %s", hexString))

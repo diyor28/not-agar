@@ -8,11 +8,17 @@ import (
 )
 
 type Schema struct {
-	Fields Fields
+	Fields   Fields
+	compress bool
 }
 
 func New(fields ...*Field) *Schema {
 	return &Schema{Fields: fields}
+}
+
+func (s *Schema) UseCompression() *Schema {
+	s.compress = true
+	return s
 }
 
 func (s *Schema) Extends(fields ...*Field) *Schema {
@@ -20,7 +26,9 @@ func (s *Schema) Extends(fields ...*Field) *Schema {
 	for _, f := range fields {
 		combinedFields = append(combinedFields, f)
 	}
-	return New(combinedFields...)
+	schema := New(combinedFields...)
+	schema.compress = s.compress
+	return schema
 }
 
 func (s *Schema) Add(fields ...*Field) *Schema {
@@ -48,6 +56,11 @@ func (s *Schema) Encode(data interface{}) (*bytesIO.BytesWriter, error) {
 	if err != nil {
 		return nil, err
 	}
+	if s.compress {
+		if err := writer.Compress(); err != nil {
+			return nil, err
+		}
+	}
 	return writer, nil
 }
 
@@ -61,5 +74,10 @@ func (s *Schema) Decode(data []byte, result interface{}) error {
 		return errors.New(fmt.Sprintf("expected struct or map, got %s", reflection.Kind().String()))
 	}
 	reader := bytesIO.NewReader(data)
+	if s.compress {
+		if err := reader.Decompress(); err != nil {
+			return err
+		}
+	}
 	return s.Fields.Decode(&reflection, reader)
 }

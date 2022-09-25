@@ -16,7 +16,7 @@ export default class Player extends Entity {
 
     draw(p5: p5Types, cameraX: number, cameraY: number) {
         const x = this._x - cameraX;
-        const y = this._y = cameraY;
+        const y = this._y - cameraY;
         let ringColor = lightenDarkenColor(this.color, - 20);
         p5.fill(this.color);
         p5.strokeWeight(strokeWeight);

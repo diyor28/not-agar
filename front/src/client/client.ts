@@ -105,10 +105,15 @@ export class GameClient {
 		this.bus.once(event, callback);
 	}
 
-	startGame({nickname}: { nickname: string }): Promise<InitialData> {
+	async startGame({nickname}: { nickname: string }): Promise<InitialData> {
 		const data = startSchema.encode({event: GameEvent.Start, nickname});
 		this.socket.emit(data.toBuffer());
-		return new Promise(resolve => this.bus.on(GameEvent.Started, resolve));
+		const result = await new Promise<InitialData>(resolve => this.bus.on(GameEvent.Started, resolve));
+		result.player.points.forEach(point => {
+			point.x /= 100
+			point.y /= 100
+		});
+		return result;
 	}
 
 	move(data: MoveCommand) {
