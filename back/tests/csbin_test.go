@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
-	"github.com/diyor28/not-agar/src/csbin"
-	"github.com/diyor28/not-agar/src/csbin/bitmask"
+	"github.com/diyor28/not-agar/cmd/csbin"
+	"github.com/diyor28/not-agar/cmd/csbin/bitmask"
 	"reflect"
 	"testing"
 )

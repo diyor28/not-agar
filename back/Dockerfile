@@ -14,7 +14,7 @@ RUN go mod download
 
 COPY . .
 
-RUN go build -o main ./src
+RUN go build -o main ./cmd
 
 WORKDIR /dist
 
