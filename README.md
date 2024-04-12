@@ -34,7 +34,8 @@ npm install
 3. **Run the server:**
 
 ```bash
-go run server.go
+cd back/
+go run ./src
 ```
 
 4. **Start the client:**
