@@ -41,9 +41,9 @@ go run ./src
 
 4. **Start the client:**
 
-``bash
+```bash
 npm start
-``
+```
 
 This will launch the game client in your default web browser.
 
