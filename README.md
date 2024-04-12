@@ -28,6 +28,7 @@ cd agar-clone
 2. **Install JavaScript dependencies:**
 
 ```bash
+cd front
 npm install
 ```
 
