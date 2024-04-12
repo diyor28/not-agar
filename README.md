@@ -21,7 +21,7 @@ Before you begin, ensure you have the following installed:
 1. **Clone the repository:**
 
 ```bash
-git clone https://github.com/yourusername/agar-clone.git
+git clone https://github.com/diyor28/not-agar.git
 cd agar-clone
 ```
 
