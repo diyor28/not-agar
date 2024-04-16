@@ -29,7 +29,7 @@ cd agar-clone
 
 ```bash
 cd front
-npm install
+yarn
 ```
 
 3. **Run the server:**
@@ -42,7 +42,7 @@ go run ./src
 4. **Start the client:**
 
 ```bash
-npm start
+yarn start
 ```
 
 This will launch the game client in your default web browser.
